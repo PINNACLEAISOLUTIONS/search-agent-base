@@ -1,34 +1,32 @@
-# CRAIGSLIST PHONOGRAPH SCRAPER
+# CRAIGSLIST PHONOGRAPH SCRAPER (PRO EDITION)
 
-This tool monitors Craigslist for landscaping leads along the Florida East Coast, from **Fort Pierce** (Treasure Coast) up to the **Georgia Border** (Jacksonville).
+The "Gold Standard" in lead discovery. This tool doesn't just scrape; it **thinks**.
 
-## Coverage Areas
-- **Treasure Coast** (Fort Pierce, Port St. Lucie, Vero Beach)
-- **Space Coast** (Melbourne, Cocoa Beach, Titusville)
-- **Daytona Beach** (Edgewater up to Palm Coast)
-- **St. Augustine** (St. Johns County)
-- **Jacksonville** (Duval County to the Georgia Line)
+## Coverage Areas (Florida East Coast)
+- **Jacksonville & St. Augustine** (Georgia Border down to Flagler)
+- **Daytona Beach** (Palm Coast to Edgewater)
+- **Space Coast & Treasure Coast** (Titusville down to Fort Pierce)
 
-## Features
-- **Live Search**: Pulls real-time results directly from Craigslist.
-- **New Post Flagging**: Automatically tracks "seen" posts and flags only the results that are truly new since your last scan.
-- **Multi-Region**: Scans all relevant East Coast subdomains in a single run.
-- **History Tracking**: Saves all leads to `leads.csv` and `leads.json`.
+## Search Logic (The "Smart" Way)
+### 1. Multi-Target Keywords
+We scan for high-value terms beyond just "landscaping":
+- `sod`, `pavers`, `tree removal`, `drainage`, `grading`, `yard cleanup`, `lawn care`.
+
+### 2. AI Triage Engine
+Every post is piped through an AI Brain (`ai_lead_processor.py`) that:
+- **Scores Leads (1-5)**: 5 = Clear Homeowner intent, 1 = Spam or Pro Ad.
+- **Classifies Tiers**: Labels leads as **DIAMOND**, **POTENTIAL HOMEOWNER**, or **PRO ADVERTISING**.
+- **Calculates Real Intent**: Subtracts points for "Company Speech" (Licensed/Insured) and adds points for "Pain Points" (Need help, estimate, backyard).
+
+### 3. Exa MCP Integration
+The `pro_lead_search.py` script shows how we use **Semantic Search** to find leads on Reddit and Nextdoor using the latest MCP technology.
 
 ## How to Use
-1. **Run the Scraper**:
-   Execute the script whenever you want to check for new leads (recommended 3-4 times a day).
-   ```bash
-   python phonograph_scraper.py
-   ```
-2. **Review Leads**:
-   - Check the console output for `[NEW]` flags.
-   - Open `leads.csv` in Excel to see the full list.
-   - Open `index.html` to view the dashboard (requires a local server or simple open).
-
-## Setup
-- Requires Python 3.x
-- Dependencies: `pip install requests beautifulsoup4 pandas lxml`
+1. **Initial Setup**: `pip install requests beautifulsoup4 pandas lxml`
+2. **Check Craigslist**: `python phonograph_scraper.py`
+3. **Check Web-Wide (Exa)**: `python pro_lead_search.py`
+4. **View Dashboard**: Open `index.html` to see your AI-ranked leads.
 
 ## Automation
-To check 4 times a day automatically, you can set up a Windows Task Scheduler task to run `python.exe` pointing to `phonograph_scraper.py` at 8 AM, 12 PM, 4 PM, and 8 PM.
+Run the scraper 4x daily to stay ahead of the competition. Flagged "New" leads will appear at the top of your dashboard.
+

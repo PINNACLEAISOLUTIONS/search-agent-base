@@ -1,17 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CRAIGSLIST PHONOGRAPH SCRAPER</title>
+    <title>OLDTIMECRANK - ANTIQUE PHONOGRAPH ENGINE</title>
     <style>
         :root {
-            --primary: #6b4c9a;
-            --secondary: #4a3b6b;
-            --accent: #ffd700;
-            --bg: #0f0f0f;
-            --card-bg: #1e1e1e;
-            --text: #e0e0e0;
+            --primary: #5c4033;
+            /* Wood Brown */
+            --secondary: #3d2b1f;
+            --accent: #cd7f32;
+            /* Bronze/Copper */
+            --bg: #1a1512;
+            --card-bg: #2d241e;
+            --text: #f5f5dc;
+            /* Cream */
         }
 
         body {
@@ -67,7 +71,7 @@
 
         .card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
             border-color: var(--primary);
         }
 
@@ -133,12 +137,13 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <header>
-            <h1>CRAIGSLIST PHONOGRAPH SCRAPER</h1>
-            <p>Live Monitoring Florida East Coast (Ft. Pierce to Georgia Border)</p>
-            <div class="refresh-notice">Run <code>phonograph_scraper.py</code> to update these results.</div>
+            <h1>OLDTIMECRANK PHONOGRAPH ENGINE</h1>
+            <p>Live Antique Discovery - Florida State-Wide Coverage</p>
+            <div class="refresh-notice">Run <code>phonograph_scraper.py</code> to find new machines.</div>
         </header>
 
         <div id="leads-container" class="grid">
@@ -153,9 +158,9 @@
             try {
                 const response = await fetch('leads.json');
                 if (!response.ok) throw new Error('No leads found yet.');
-                
+
                 const leads = await response.json();
-                
+
                 if (leads.length === 0) {
                     container.innerHTML = '<div id="status">No leads found. Run the scraper script!</div>';
                     return;
@@ -165,18 +170,23 @@
                 leads.forEach(lead => {
                     const card = document.createElement('div');
                     card.className = `card ${lead.is_new ? 'new' : ''}`;
-                    
+
                     const dateStr = lead.date ? new Date(lead.date).toLocaleDateString() : 'Recent';
-                    
+                    const scoreColor = lead.score >= 4 ? '#ffd700' : (lead.score >= 3 ? '#4caf50' : '#888');
+
                     card.innerHTML = `
                         ${lead.is_new ? '<span class="tag-new">New</span>' : ''}
-                        <span class="region">${lead.region}</span>
+                        <span class="region">${lead.region} • ${lead.keyword || 'Search'}</span>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                             <span style="background:${scoreColor}; color:#000; padding:2px 6px; border-radius:4px; font-weight:bold; font-size:0.8em">AI: ${lead.score}/5</span>
+                             <span style="font-size:0.75em; color:#aaa; font-weight:bold">${lead.classification}</span>
+                        </div>
                         <h3>${lead.title}</h3>
                         <div class="meta">
                             <span>ID: ${lead.id}</span>
                             <span>${dateStr}</span>
                         </div>
-                        <a href="${lead.link}" target="_blank" class="btn">View on Craigslist</a>
+                        <a href="${lead.link}" target="_blank" class="btn">View Lead</a>
                     `;
                     container.appendChild(card);
                 });
@@ -191,4 +201,5 @@
         setInterval(loadLeads, 60000);
     </script>
 </body>
+
 </html>

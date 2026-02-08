@@ -1,106 +1,217 @@
 import os
 import json
-import time
-import requests
 import datetime
-import pandas as pd
+import asyncio
+from playwright.async_api import async_playwright
+from playwright_stealth import stealth_async
 from bs4 import BeautifulSoup
+from ai_lead_processor import AIAntiqueProcessor
+import pandas as pd
 
-# Regions defined from Fort Pierce to Georgia Border
+# ALL Florida Craigslist Subdomains
 REGIONS = {
-    "Treasure Coast": "treasure",
-    "Space Coast": "spacecoast",
-    "Daytona Beach": "daytona",
-    "St. Augustine": "staugustine",
-    "Jacksonville": "jacksonville"
+    "Miami": "https://miami.craigslist.org",
+    "Ft Lauderdale": "https://fortlauderdale.craigslist.org",
+    "West Palm": "https://westpalm.craigslist.org",
+    "Treasure Coast": "https://treasure.craigslist.org",
+    "Space Coast": "https://spacecoast.craigslist.org",
+    "Daytona Beach": "https://daytona.craigslist.org",
+    "St Augustine": "https://staugustine.craigslist.org",
+    "Jacksonville": "https://jacksonville.craigslist.org",
+    "Orlando": "https://orlando.craigslist.org",
+    "Ocala": "https://ocala.craigslist.org",
+    "Gainesville": "https://gainesville.craigslist.org",
+    "Tallahassee": "https://tallahassee.craigslist.org",
+    "Tampa Bay": "https://tampa.craigslist.org",
+    "Lake City": "https://lakecity.craigslist.org",
+    "Lakeland": "https://lakeland.craigslist.org",
+    "Sarasota": "https://sarasota.craigslist.org",
+    "Ft Myers": "https://fortmyers.craigslist.org",
+    "FL Keys": "https://keys.craigslist.org",
+    "Panama City": "https://panamacity.craigslist.org",
+    "Pensacola": "https://pensacola.craigslist.org",
 }
 
-# Search Categories (Labor/Landscaping/Gigs)
-CATEGORIES = ["lbs", "lbg"] # lbs = labor, lbg = labor gigs
-SEARCH_QUERY = "landscaping"
+# Targeted Antique Keywords
+SEARCH_KEYWORDS = [
+    "phonograph",
+    "edison",
+    "columbia",
+    "victor",
+    "victrola",
+    "gramophone",
+    "graphophone",
+    "antique",
+]
+
+# SPIFY / APIFY Discovery Hooks:
+# These keywords are shared with the external discovery engine
+
 SEEN_POSTS_FILE = "seen_posts.json"
 LEADS_CSV = "leads.csv"
 LEADS_JSON = "leads.json"
 
+
 def load_seen_posts():
     if os.path.exists(SEEN_POSTS_FILE):
-        with open(SEEN_POSTS_FILE, 'r') as f:
-            return set(json.load(f))
+        try:
+            with open(SEEN_POSTS_FILE, "r") as f:
+                return set(json.load(f))
+        except Exception:
+            return set()
     return set()
 
+
 def save_seen_posts(seen_posts):
-    with open(SEEN_POSTS_FILE, 'w') as f:
+    with open(SEEN_POSTS_FILE, "w") as f:
         json.dump(list(seen_posts), f)
 
-def scrape_craigslist():
-    print("="*40)
-    print("CRAIGSLIST PHONOGRAPH SCRAPER")
-    print(f"Time: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print("="*40)
-    
-    seen_posts = load_seen_posts()
-    all_leads = []
-    new_count = 0
 
-    for region_name, region_sub in REGIONS.items():
-        print(f"\nChecking {region_name}...")
-        for cat in CATEGORIES:
-            # Using RSS feed for cleaner data parsing and IDs
-            rss_url = f"https://{region_sub}.craigslist.org/search/{cat}?format=rss&query={SEARCH_QUERY}"
+async def scrape_region(
+    browser, region_name, base_url, keyword, seen_posts, ai_processor
+):
+    leads = []
+    # Create a fresh context for each search to avoid cross-pollution and crashes
+    context = await browser.new_context(
+        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    )
+    page = await context.new_page()
+    await stealth_async(page)
+
+    # Category atq = Antiques
+    search_url = f"{base_url}/search/atq?query={keyword}"
+    print(f"  Searching {region_name} for '{keyword}'...")
+
+    try:
+        await page.goto(search_url, wait_until="networkidle", timeout=30000)
+        content = await page.content()
+        soup = BeautifulSoup(content, "html.parser")
+
+        # Craigslist layout selectors
+        results = soup.select(".cl-search-result") or soup.select(".result-row")
+
+        for res in results:
             try:
-                response = requests.get(rss_url, timeout=15)
-                if response.status_code != 200:
+                title_elem = res.select_one(".titlestring") or res.select_one(
+                    ".result-title"
+                )
+                if not title_elem:
                     continue
-                
-                soup = BeautifulSoup(response.content, 'xml')
-                items = soup.find_all('item')
 
-                for item in items:
-                    title = item.find('title').text
-                    link = item.find('link').text
-                    date = item.find('dc:date').text if item.find('dc:date') else ""
-                    post_id = link.split('/')[-1].split('.')[0] # Extract ID from URL
+                title = title_elem.get_text().strip()
+                link = title_elem["href"]
+                if not link.startswith("http"):
+                    link = base_url + link
 
-                    lead = {
-                        "id": post_id,
-                        "title": title,
-                        "link": link,
-                        "date": date,
-                        "region": region_name,
-                        "timestamp": datetime.datetime.now().isoformat()
-                    }
+                post_id = link.split("/")[-1].split(".")[0]
 
-                    if post_id not in seen_posts:
-                        print(f"[NEW] {title} ({region_name})")
-                        print(f"      {link}")
-                        seen_posts.add(post_id)
-                        lead["is_new"] = True
-                        new_count += 1
-                    else:
-                        lead["is_new"] = False
-                    
-                    all_leads.append(lead)
+                if post_id in seen_posts:
+                    continue
+
+                # AI Antique Scoring
+                analysis = ai_processor.score_lead(title)
+
+                lead = {
+                    "id": post_id,
+                    "title": title,
+                    "link": link,
+                    "region": region_name,
+                    "keyword": keyword,
+                    "score": analysis["score"],
+                    "classification": analysis["classification"],
+                    "timestamp": datetime.datetime.now().isoformat(),
+                    "is_new": True,
+                }
+
+                leads.append(lead)
+                seen_posts.add(post_id)
+
+                if analysis["score"] >= 4.0:
+                    print(f"    [GOLD FIND] {title} (Score: {analysis['score']})")
+                elif analysis["score"] >= 2.0:
+                    print(f"    [NEW] {title}")
 
             except Exception as e:
-                print(f"Error checking {region_name} ({cat}): {e}")
+                print(f"Error scraping {region_name}: {e}")
+                continue
+
+    finally:
+        await context.close()
+    return leads
+
+
+async def main():
+    print("=" * 40)
+    print("OLDTIMECRANK - ANTIQUE PHONOGRAPH ENGINE")
+    print(f"Time: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print("=" * 40)
+
+    seen_posts = load_seen_posts()
+    ai_processor = AIAntiqueProcessor()
+    all_leads = []
+
+    # Limit concurrency to 3 cities at once to avoid crashing Chromium
+    sem = asyncio.Semaphore(3)
+
+    async def sem_scrape(
+        browser, region_name, base_url, keyword, seen_posts, ai_processor
+    ):
+        async with sem:
+            return await scrape_region(
+                browser, region_name, base_url, keyword, seen_posts, ai_processor
+            )
+
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        tasks = []
+        for region_name, base_url in REGIONS.items():
+            for keyword in SEARCH_KEYWORDS:
+                tasks.append(
+                    sem_scrape(
+                        browser,
+                        region_name,
+                        base_url,
+                        keyword,
+                        seen_posts,
+                        ai_processor,
+                    )
+                )
+
+        print(
+            f"🚀 Launching Stabilized Parallel Search (Concurrency: 3) for {len(tasks)} queries..."
+        )
+        result_lists = await asyncio.gather(*tasks)
+
+        for r_list in result_lists:
+            all_leads.extend(r_list)
+
+        await browser.close()
 
     # Update state
     save_seen_posts(seen_posts)
-    
-    # Save results to CSV/JSON for UI consumption
-    if all_leads:
-        df = pd.DataFrame(all_leads)
-        # Append to master leads list or overwrite with newest
-        if os.path.exists(LEADS_CSV):
-            existing_df = pd.read_csv(LEADS_CSV)
-            df = pd.concat([df, existing_df]).drop_duplicates(subset='id').sort_values(by='date', ascending=False)
-        
-        df.to_csv(LEADS_CSV, index=False)
-        df.to_json(LEADS_JSON, orient='records', indent=2)
 
-    print("\n" + "="*40)
-    print(f"Scan Complete. Found {new_count} new leads.")
-    print("="*40)
+    # Save results
+    if all_leads:
+        new_df = pd.DataFrame(all_leads)
+        if os.path.exists(LEADS_CSV):
+            try:
+                existing_df = pd.read_csv(LEADS_CSV)
+                combined_df = pd.concat([new_df, existing_df]).drop_duplicates(
+                    subset="id"
+                )
+            except Exception:
+                combined_df = new_df
+        else:
+            combined_df = new_df
+
+        combined_df.sort_values(by="score", ascending=False, inplace=True)
+        combined_df.to_csv(LEADS_CSV, index=False)
+        combined_df.to_json(LEADS_JSON, orient="records", indent=2)
+
+    print("\n" + "=" * 40)
+    print(f"Search Complete. Found {len(all_leads)} new potential machines.")
+    print("=" * 40)
+
 
 if __name__ == "__main__":
-    scrape_craigslist()
+    asyncio.run(main())
