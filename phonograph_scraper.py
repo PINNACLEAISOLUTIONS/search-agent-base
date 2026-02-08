@@ -2,11 +2,11 @@ import os
 import json
 import datetime
 import asyncio
-from playwright.async_api import async_playwright
-from playwright_stealth import stealth_async
+from playwright.async_api import async_playwright  # type: ignore
+from playwright_stealth import stealth_async  # type: ignore
 from bs4 import BeautifulSoup
 from ai_lead_processor import AIAntiqueProcessor
-import pandas as pd
+import pandas as pd  # type: ignore
 
 # ALL Florida Craigslist Subdomains
 REGIONS = {
