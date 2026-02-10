@@ -11,21 +11,11 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
 
 jobs:
   scrape-and-deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
       - name: Checkout repo
@@ -53,14 +43,11 @@ jobs:
           git diff --staged --quiet || git commit -m "🤖 Auto-update leads $(date -u +'%Y-%m-%d %H:%M UTC')"
           git push || true
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
+      - name: Install Netlify CLI
+        run: npm install -g netlify-cli
 
-      - name: Upload to Pages
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: "."
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Deploy to Netlify
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: b701cda9-81ae-46f1-9a24-9d09740aa65a
+        run: netlify deploy --prod --dir=. --site=$NETLIFY_SITE_ID
