@@ -144,7 +144,7 @@ async def scrape_region(
     finally:
         try:
             await context.close()
-        except:
+        except Exception:
             pass
     return leads
 
