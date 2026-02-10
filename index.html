@@ -402,9 +402,8 @@
             container.innerHTML = '<div id="status"><span class="spinner"></span> Loading leads...</div>';
 
             try {
-                // Fetch directly from GitHub RAW storage for instant updates (bypasses Netlify build delay)
-                const rawUrl = 'https://raw.githubusercontent.com/PINNACLEAISOLUTIONS/search-agent-base/main/leads.json';
-                const res = await fetch(rawUrl + '?t=' + Date.now()); // Cache-busting
+                // Fetch from leads-v2.json to bypass stubborn Netlify cache (force fresh file)
+                const res = await fetch('leads-v2.json?t=' + Date.now());
 
                 if (!res.ok) throw new Error('No leads file found');
 
@@ -424,13 +423,12 @@
                 // Find the most recent timestamp in the data
                 const timestamps = leads.map(l => l.timestamp).filter(Boolean).sort();
                 if (timestamps.length > 0) {
-                    // Just take the latest one
                     const latest = timestamps[timestamps.length - 1];
                     const lastScrape = new Date(latest);
                     updatedLabel.textContent = `Last scrape: ${lastScrape.toLocaleString()}`;
                 }
 
-                sourceLabel.textContent = `${leads.length} leads loaded via GitHub Raw`;
+                sourceLabel.textContent = `${leads.length} leads loaded via Netlify v2`;
 
                 // Render cards
                 container.innerHTML = '';
@@ -465,7 +463,7 @@
 
             } catch (error) {
                 console.error(error);
-                container.innerHTML = `<div id="status">Syncing with GitHub... check back in 1 minute.</div>`;
+                container.innerHTML = `<div id="status">Syncing newly forced dataset (v2)... check back in 1 minute.</div>`;
                 sourceLabel.textContent = 'Syncing...';
             }
         }
