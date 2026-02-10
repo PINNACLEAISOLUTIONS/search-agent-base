@@ -83,7 +83,10 @@ async def scrape_region(
     print(f"  Searching {region_name} for '{keyword}'...")
 
     try:
-        await page.goto(search_url, wait_until="networkidle", timeout=30000)
+        # Increased timeout to 60s for stability
+        await page.goto(search_url, wait_until="mask", timeout=60000)
+        # Random sleep to mimic human behavior
+        await asyncio.sleep(2)
         content = await page.content()
         soup = BeautifulSoup(content, "html.parser")
 
@@ -132,11 +135,17 @@ async def scrape_region(
                     print(f"    [NEW] {title}")
 
             except Exception as e:
-                print(f"Error scraping {region_name}: {e}")
+                # Log but verify scraper continues
+                print(f"Error parsing result in {region_name}: {e}")
                 continue
 
+    except Exception as e:
+        print(f"⚠️ Search failed for {region_name} - {keyword}: {e}")
     finally:
-        await context.close()
+        try:
+            await context.close()
+        except:
+            pass
     return leads
 
 
