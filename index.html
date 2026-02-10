@@ -402,8 +402,10 @@
             container.innerHTML = '<div id="status"><span class="spinner"></span> Loading leads...</div>';
 
             try {
-                // Cache-bust so we always get the latest file from GitHub Pages
-                const res = await fetch('leads.json?t=' + Date.now());
+                // Fetch directly from GitHub RAW storage for instant updates (bypasses Netlify build delay)
+                const rawUrl = 'https://raw.githubusercontent.com/PINNACLEAISOLUTIONS/search-agent-base/main/leads.json';
+                const res = await fetch(rawUrl + '?t=' + Date.now()); // Cache-busting
+
                 if (!res.ok) throw new Error('No leads file found');
 
                 const leads = await res.json();
@@ -422,11 +424,13 @@
                 // Find the most recent timestamp in the data
                 const timestamps = leads.map(l => l.timestamp).filter(Boolean).sort();
                 if (timestamps.length > 0) {
-                    const lastScrape = new Date(timestamps[timestamps.length - 1]);
+                    // Just take the latest one
+                    const latest = timestamps[timestamps.length - 1];
+                    const lastScrape = new Date(latest);
                     updatedLabel.textContent = `Last scrape: ${lastScrape.toLocaleString()}`;
                 }
 
-                sourceLabel.textContent = `${leads.length} leads loaded`;
+                sourceLabel.textContent = `${leads.length} leads loaded via GitHub Raw`;
 
                 // Render cards
                 container.innerHTML = '';
@@ -460,8 +464,9 @@
                 });
 
             } catch (error) {
-                container.innerHTML = `<div id="status">No leads yet — the scraper runs automatically every hour. Check back soon!</div>`;
-                sourceLabel.textContent = 'Awaiting first run';
+                console.error(error);
+                container.innerHTML = `<div id="status">Syncing with GitHub... check back in 1 minute.</div>`;
+                sourceLabel.textContent = 'Syncing...';
             }
         }
 
