@@ -5,110 +5,281 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OLDTIMECRANK - ANTIQUE PHONOGRAPH ENGINE</title>
+    <meta name="description"
+        content="Live antique phonograph discovery engine - scanning all Florida Craigslist regions automatically every hour.">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600&display=swap"
+        rel="stylesheet">
     <style>
         :root {
             --primary: #5c4033;
-            /* Wood Brown */
             --secondary: #3d2b1f;
             --accent: #cd7f32;
-            /* Bronze/Copper */
-            --bg: #1a1512;
-            --card-bg: #2d241e;
-            --text: #f5f5dc;
-            /* Cream */
+            --gold: #ffd700;
+            --bg: #0f0d0b;
+            --card-bg: #1e1914;
+            --card-border: #352a22;
+            --text: #f5f0e8;
+            --text-muted: #9a8a78;
+            --success: #4caf50;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Inter', sans-serif;
             background-color: var(--bg);
             color: var(--text);
-            margin: 0;
-            padding: 20px;
+            min-height: 100vh;
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1300px;
             margin: 0 auto;
+            padding: 20px;
         }
 
+        /* ─── HEADER ─── */
         header {
             text-align: center;
-            padding: 40px 0;
-            border-bottom: 2px solid var(--primary);
-            margin-bottom: 30px;
+            padding: 50px 20px 30px;
+            position: relative;
+        }
+
+        header::after {
+            content: '';
+            display: block;
+            width: 120px;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+            margin: 25px auto 0;
         }
 
         h1 {
-            font-size: 2.5em;
-            letter-spacing: 2px;
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(1.8em, 5vw, 3em);
+            letter-spacing: 4px;
             color: var(--accent);
             text-transform: uppercase;
-            margin: 0;
-            text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+            text-shadow: 0 0 30px rgba(205, 127, 50, 0.25);
         }
 
-        .refresh-notice {
-            font-style: italic;
-            color: #888;
-            margin-top: 10px;
+        .subtitle {
+            color: var(--text-muted);
+            margin-top: 8px;
+            font-size: 0.95em;
+            letter-spacing: 1px;
         }
 
+        /* ─── STATUS BAR ─── */
+        .status-bar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            padding: 15px 20px;
+            margin: 20px auto;
+            max-width: 800px;
+            background: rgba(30, 25, 20, 0.8);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            font-size: 0.85em;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-muted);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.4;
+            }
+        }
+
+        .refresh-btn {
+            background: var(--primary);
+            color: var(--text);
+            border: 1px solid var(--accent);
+            padding: 6px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .refresh-btn:hover {
+            background: var(--accent);
+            color: #000;
+        }
+
+        .refresh-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* ─── STATS ROW ─── */
+        .stats-row {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+            margin: 15px auto 25px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.8em;
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        .stat-label {
+            font-size: 0.75em;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* ─── CARDS GRID ─── */
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
             gap: 20px;
+            padding-bottom: 40px;
         }
 
         .card {
             background: var(--card-bg);
-            border-radius: 12px;
-            padding: 20px;
-            border: 1px solid #333;
-            transition: transform 0.2s, box-shadow 0.2s;
+            border-radius: 14px;
+            padding: 22px;
+            border: 1px solid var(--card-border);
+            transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
             position: relative;
             overflow: hidden;
         }
 
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
         .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
             border-color: var(--primary);
         }
 
-        .card.new {
-            border-left: 5px solid var(--accent);
+        .card:hover::before {
+            opacity: 1;
+        }
+
+        .card.gold-find {
+            border-left: 4px solid var(--gold);
+        }
+
+        .card.gold-find::before {
+            background: linear-gradient(90deg, var(--gold), var(--accent));
+            opacity: 1;
+        }
+
+        .tag {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            padding: 3px 10px;
+            font-weight: 700;
+            font-size: 0.7em;
+            border-radius: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .tag-new {
-            position: absolute;
-            top: 10px;
-            right: 10px;
             background: var(--accent);
             color: #000;
-            padding: 2px 8px;
-            font-weight: bold;
-            font-size: 0.8em;
-            border-radius: 4px;
-            text-transform: uppercase;
         }
 
-        .region {
-            font-size: 0.9em;
-            color: var(--primary);
-            font-weight: bold;
-            display: block;
+        .tag-gold {
+            background: var(--gold);
+            color: #000;
+        }
+
+        .region-badge {
+            font-size: 0.8em;
+            color: var(--accent);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
             margin-bottom: 10px;
         }
 
-        h3 {
-            margin: 0 0 15px 0;
-            line-height: 1.4;
-            font-size: 1.2em;
+        .score-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .score-badge {
+            padding: 3px 10px;
+            border-radius: 5px;
+            font-weight: 700;
+            font-size: 0.8em;
+        }
+
+        .classification {
+            font-size: 0.72em;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .card h3 {
+            font-size: 1.15em;
+            line-height: 1.45;
+            margin-bottom: 14px;
+            font-weight: 600;
         }
 
         .meta {
-            font-size: 0.85em;
-            color: #aaa;
+            font-size: 0.8em;
+            color: var(--text-muted);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -116,24 +287,71 @@
 
         a.btn {
             display: inline-block;
-            margin-top: 20px;
-            padding: 10px 20px;
-            background: var(--primary);
-            color: white;
+            margin-top: 16px;
+            padding: 10px 22px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: var(--text);
             text-decoration: none;
-            border-radius: 6px;
-            font-weight: bold;
-            transition: background 0.2s;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9em;
+            transition: all 0.25s;
+            border: 1px solid var(--card-border);
         }
 
         a.btn:hover {
-            background: var(--secondary);
+            background: linear-gradient(135deg, var(--accent), var(--primary));
+            border-color: var(--accent);
+            transform: scale(1.02);
         }
 
         #status {
             text-align: center;
-            padding: 50px;
-            color: #666;
+            padding: 60px 20px;
+            color: var(--text-muted);
+            font-size: 1.1em;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--card-border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .auto-badge {
+            display: inline-block;
+            background: rgba(76, 175, 80, 0.15);
+            color: var(--success);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75em;
+            font-weight: 600;
+            margin-top: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        @media (max-width: 480px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .status-bar {
+                flex-direction: column;
+                gap: 10px;
+            }
         }
     </style>
 </head>
@@ -141,64 +359,126 @@
 <body>
     <div class="container">
         <header>
-            <h1>OLDTIMECRANK PHONOGRAPH ENGINE</h1>
-            <p>Live Antique Discovery - Florida State-Wide Coverage</p>
-            <div class="refresh-notice">Run <code>phonograph_scraper.py</code> to find new machines.</div>
+            <h1>⚙️ OldTimeCrank</h1>
+            <p class="subtitle">Live Antique Phonograph Discovery — Florida State-Wide</p>
+            <div class="auto-badge">🤖 Auto-updates every hour via GitHub Actions</div>
         </header>
 
+        <div class="status-bar">
+            <div class="status-item">
+                <span class="status-dot" id="live-dot"></span>
+                <span id="data-source">Loading...</span>
+            </div>
+            <div class="status-item" id="last-updated">—</div>
+            <button class="refresh-btn" id="refresh-btn" onclick="refresh()">↻ Refresh</button>
+        </div>
+
+        <div class="stats-row">
+            <div class="stat">
+                <div class="stat-value" id="stat-total">—</div>
+                <div class="stat-label">Total Leads</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="stat-gold">—</div>
+                <div class="stat-label">Gold Finds</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="stat-regions">—</div>
+                <div class="stat-label">Regions</div>
+            </div>
+        </div>
+
         <div id="leads-container" class="grid">
-            <!-- Leads will be injected here -->
-            <div id="status">Loading leads...</div>
+            <div id="status"><span class="spinner"></span> Loading leads...</div>
         </div>
     </div>
 
     <script>
         async function loadLeads() {
             const container = document.getElementById('leads-container');
+            const sourceLabel = document.getElementById('data-source');
+            const updatedLabel = document.getElementById('last-updated');
+
+            container.innerHTML = '<div id="status"><span class="spinner"></span> Loading leads...</div>';
+
             try {
-                const response = await fetch('leads.json');
-                if (!response.ok) throw new Error('No leads found yet.');
+                // Cache-bust so we always get the latest file from GitHub Pages
+                const res = await fetch('leads.json?t=' + Date.now());
+                if (!res.ok) throw new Error('No leads file found');
 
-                const leads = await response.json();
+                const leads = await res.json();
 
-                if (leads.length === 0) {
-                    container.innerHTML = '<div id="status">No leads found. Run the scraper script!</div>';
+                if (!leads || leads.length === 0) {
+                    container.innerHTML = '<div id="status">No leads found yet. The scraper runs automatically every hour — check back soon!</div>';
+                    sourceLabel.textContent = 'Waiting for first scrape';
                     return;
                 }
 
+                // Update stats
+                document.getElementById('stat-total').textContent = leads.length;
+                document.getElementById('stat-gold').textContent = leads.filter(l => l.score >= 4).length;
+                document.getElementById('stat-regions').textContent = new Set(leads.map(l => l.region)).size;
+
+                // Find the most recent timestamp in the data
+                const timestamps = leads.map(l => l.timestamp).filter(Boolean).sort();
+                if (timestamps.length > 0) {
+                    const lastScrape = new Date(timestamps[timestamps.length - 1]);
+                    updatedLabel.textContent = `Last scrape: ${lastScrape.toLocaleString()}`;
+                }
+
+                sourceLabel.textContent = `${leads.length} leads loaded`;
+
+                // Render cards
                 container.innerHTML = '';
                 leads.forEach(lead => {
                     const card = document.createElement('div');
-                    card.className = `card ${lead.is_new ? 'new' : ''}`;
+                    const isGold = lead.score >= 4;
+                    card.className = `card ${isGold ? 'gold-find' : ''}`;
 
-                    const dateStr = lead.date ? new Date(lead.date).toLocaleDateString() : 'Recent';
-                    const scoreColor = lead.score >= 4 ? '#ffd700' : (lead.score >= 3 ? '#4caf50' : '#888');
+                    const scoreColor = isGold ? 'var(--gold)' : (lead.score >= 3 ? 'var(--success)' : 'var(--text-muted)');
+                    const dateStr = lead.timestamp ? new Date(lead.timestamp).toLocaleDateString() : 'Recent';
+
+                    let tag = '';
+                    if (isGold) tag = '<span class="tag tag-gold">★ Gold</span>';
+                    else if (lead.is_new) tag = '<span class="tag tag-new">New</span>';
 
                     card.innerHTML = `
-                        ${lead.is_new ? '<span class="tag-new">New</span>' : ''}
-                        <span class="region">${lead.region} • ${lead.keyword || 'Search'}</span>
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                             <span style="background:${scoreColor}; color:#000; padding:2px 6px; border-radius:4px; font-weight:bold; font-size:0.8em">AI: ${lead.score}/5</span>
-                             <span style="font-size:0.75em; color:#aaa; font-weight:bold">${lead.classification}</span>
+                        ${tag}
+                        <div class="region-badge">📍 ${lead.region || 'Florida'} • ${lead.keyword || 'Search'}</div>
+                        <div class="score-row">
+                            <span class="score-badge" style="background:${scoreColor}; color:#000;">AI: ${lead.score}/5</span>
+                            <span class="classification">${lead.classification || ''}</span>
                         </div>
                         <h3>${lead.title}</h3>
                         <div class="meta">
                             <span>ID: ${lead.id}</span>
                             <span>${dateStr}</span>
                         </div>
-                        <a href="${lead.link}" target="_blank" class="btn">View Lead</a>
+                        <a href="${lead.link}" target="_blank" rel="noopener" class="btn">View Lead →</a>
                     `;
                     container.appendChild(card);
                 });
 
             } catch (error) {
-                container.innerHTML = `<div id="status">${error.message}</div>`;
+                container.innerHTML = `<div id="status">No leads yet — the scraper runs automatically every hour. Check back soon!</div>`;
+                sourceLabel.textContent = 'Awaiting first run';
             }
         }
 
+        async function refresh() {
+            const btn = document.getElementById('refresh-btn');
+            btn.disabled = true;
+            btn.textContent = '↻ Loading...';
+            await loadLeads();
+            btn.disabled = false;
+            btn.textContent = '↻ Refresh';
+        }
+
+        // Initial load
         loadLeads();
-        // Refresh every minute to check if file changed (client-side only)
-        setInterval(loadLeads, 60000);
+
+        // Auto-refresh every 5 minutes in case new data was pushed
+        setInterval(loadLeads, 5 * 60 * 1000);
     </script>
 </body>
 
