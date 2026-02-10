@@ -1,1 +1,35 @@
-[]
+[
+    {
+        "id": "7823491023",
+        "title": "Vintage Victor Victrola VV-XI Phonograph - Works Great",
+        "link": "https://miami.craigslist.org/mdc/atq/d/miami-vintage-victor-victrola-vv-xi/7823491023.html",
+        "region": "Miami",
+        "keyword": "victrola",
+        "score": 5.0,
+        "classification": "high_value_antique",
+        "timestamp": "2026-02-09T17:15:00",
+        "is_new": true
+    },
+    {
+        "id": "7821558291",
+        "title": "Edison Diamond Disc Player C-19 w/ Records",
+        "link": "https://tampa.craigslist.org/hil/atq/d/tampa-edison-diamond-disc-player-19/7821558291.html",
+        "region": "Tampa",
+        "keyword": "phonograph",
+        "score": 4.5,
+        "classification": "antique",
+        "timestamp": "2026-02-09T17:10:00",
+        "is_new": true
+    },
+    {
+        "id": "7819923847",
+        "title": "Antique Columbia Grafonola - Oak Cabinet",
+        "link": "https://orlando.craigslist.org/ora/atq/d/orlando-antique-columbia-grafonola/7819923847.html",
+        "region": "Orlando",
+        "keyword": "antique",
+        "score": 4.0,
+        "classification": "antique",
+        "timestamp": "2026-02-09T17:05:00",
+        "is_new": true
+    }
+]
