@@ -263,20 +263,20 @@ async def scrape_region(context, region_name, base_url, keyword, seen_posts):
                     new_leads.append(lead_obj.model_dump())
                     seen_posts.add(post_id)
 
-                    tag = "🥇 GOLD" if analysis["score"] >= 4.0 else "✅"
+                    tag = "GOLD" if analysis["score"] >= 4.0 else "MATCH"
                     price_str = f" {price}" if price else ""
                     print(
                         f"    {tag} [{region_name}] {title}{price_str} (Date: {posted_date})"
                     )
                 except Exception as val_err:
-                    print(f"    ⚠️ Data Validation Failed: {val_err}")
+                    print(f"    Data Validation Failed: {val_err}")
                     continue
 
             except Exception:
                 continue
 
     except Exception as e:
-        print(f"  ⚠️ Failed {region_name}/{keyword}: {e}")
+        print(f"  Failed {region_name}/{keyword}: {e}")
     finally:
         if page:
             try:
@@ -363,11 +363,20 @@ async def main():
     save_all_leads(existing_leads)
     save_seen_posts(seen_posts)
 
+    # Save Metadata for Frontend Status
+    meta = {
+        "last_updated": datetime.datetime.now().isoformat(),
+        "total_leads": len(existing_leads),
+        "new_leads_this_run": len(unique_new_leads),
+    }
+    with open("metadata.json", "w") as f:
+        json.dump(meta, f)
+
     print(f"\n{'=' * 60}")
-    print("✅ Scrape Complete.")
-    print(f"🆕 Found {len(new_leads)} raw leads.")
-    print(f"✨ Added {len(unique_new_leads)} unique leads (after deduplication).")
-    print(f"💾 Total leads in DB: {len(existing_leads)}")
+    print("Scrape Complete.")
+    print(f"Found {len(new_leads)} raw leads.")
+    print(f"Added {len(unique_new_leads)} unique leads (after deduplication).")
+    print(f"Total leads in DB: {len(existing_leads)}")
     print("=====================")
 
 

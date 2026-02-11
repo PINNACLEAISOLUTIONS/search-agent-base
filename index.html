@@ -443,11 +443,30 @@
                 document.getElementById('stat-regions').textContent = new Set(leads.map(l => l.region)).size;
 
                 // Find the most recent timestamp in the data
-                const timestamps = leads.map(l => l.timestamp).filter(Boolean).sort();
-                if (timestamps.length > 0) {
-                    const latest = timestamps[timestamps.length - 1];
-                    const lastScrape = new Date(latest);
-                    updatedLabel.textContent = `Last scrape: ${lastScrape.toLocaleString()}`;
+                // const timestamps = leads.map(l => l.timestamp).filter(Boolean).sort();
+                // if (timestamps.length > 0) {
+                //     const latest = timestamps[timestamps.length - 1];
+                //     const lastScrape = new Date(latest);
+                //     updatedLabel.textContent = `Last scrape: ${lastScrape.toLocaleString()}`;
+                // }
+
+                // Fetch real metadata if available
+                try {
+                    const metaRes = await fetch('metadata.json?t=' + Date.now());
+                    if (metaRes.ok) {
+                        const meta = await metaRes.json();
+                        if (meta.last_updated) {
+                            const lastScrape = new Date(meta.last_updated);
+                            updatedLabel.textContent = `Last Scrape: ${lastScrape.toLocaleString()}`;
+                        }
+                    }
+                } catch (e) {
+                    console.log('Metadata fetch failed, using lead data fallback');
+                    const timestamps = leads.map(l => l.timestamp).filter(Boolean).sort();
+                    if (timestamps.length > 0) {
+                        const latest = timestamps[timestamps.length - 1];
+                        updatedLabel.textContent = `Last Data: ${new Date(latest).toLocaleDateString()}`;
+                    }
                 }
 
                 // Sort: newest listing first (by posted_date, then timestamp)
