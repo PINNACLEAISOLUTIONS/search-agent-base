@@ -481,15 +481,16 @@
                     card.className = `card ${isGold ? 'gold-find' : ''}`;
 
                     const scoreColor = isGold ? 'var(--gold)' : (lead.score >= 3 ? 'var(--success)' : 'var(--text-muted)');
-                    // Use posted_date if available, fallback to timestamp
+                    // Date display (date only, no time)
                     const rawDate = lead.posted_date || lead.timestamp || '';
-                    let dateStr = 'Recent';
+                    let dateStr = '';
                     if (rawDate) {
                         const d = new Date(rawDate.replace(' ', 'T'));
-                        if (!isNaN(d)) {
-                            dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-                        }
+                        if (!isNaN(d)) dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                     }
+
+                    // Price display
+                    const priceStr = lead.price || '';
 
                     let tag = '';
                     if (isGold) tag = '<span class="tag tag-gold">★ Gold</span>';
@@ -504,14 +505,14 @@
                         </div>
                         <h3>${lead.title}</h3>
                         <div class="meta">
-                            <span>ID: ${lead.id}</span>
+                            <span style="font-size:1.1em; font-weight:600; color:var(--gold);">${priceStr}</span>
                             <span>${dateStr}</span>
                         </div>
                         <a href="${lead.link}" target="_blank" rel="noopener" class="btn">View Lead →</a>
                     `;
 
                     // Insert image if available (skip tiny base64 placeholders)
-                    const hasRealImage = lead.image && !lead.image.startsWith('data:image') && lead.image !== '';
+                    const hasRealImage = lead.image && !lead.image.startsWith('data:image') && !lead.image.includes('empty.png') && lead.image !== '';
                     if (hasRealImage) {
                         const imgContainer = document.createElement('div');
                         imgContainer.style.height = '200px';

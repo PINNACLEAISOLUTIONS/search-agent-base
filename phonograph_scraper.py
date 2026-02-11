@@ -215,15 +215,27 @@ async def scrape_region(context, region_name, base_url, keyword, seen_posts):
                             f"https://images.craigslist.org/{first_id}_300x300.jpg"
                         )
 
-                # --- DATE (New Feature) ---
-                date_elem = res.select_one("time.result-date")
+                # --- DATE: Try multiple Craigslist selectors ---
                 posted_date = ""
-                if date_elem:
-                    posted_date = date_elem.get(
-                        "datetime", ""
-                    )  # e.g., "2026-02-10 21:00"
+                date_selectors = [
+                    "time.result-date",  # Classic CL layout
+                    "time.posted-date",  # Alternative CL layout
+                    ".meta time",  # Gallery/grid layout
+                    "time[datetime]",  # Any time element with datetime
+                    ".result-date",  # Span variant
+                ]
+                for sel in date_selectors:
+                    date_elem = res.select_one(sel)
+                    if date_elem:
+                        posted_date = (
+                            date_elem.get("datetime", "")
+                            or date_elem.get("title", "")
+                            or date_elem.get_text(strip=True)
+                        )
+                        if posted_date:
+                            break
 
-                # If no specific date found, fallback to scrape time but mark it
+                # If no date from search result, fallback to scrape time
                 if not posted_date:
                     posted_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 
