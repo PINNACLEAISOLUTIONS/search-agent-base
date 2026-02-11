@@ -186,9 +186,9 @@ async def scrape_region(context, region_name, base_url, keyword, seen_posts):
 
                 post_id = link.split("/")[-1].split(".")[0]
 
-                # Skip if we've seen this before
-                if post_id in seen_posts:
-                    continue
+                # Skip if we've seen this before - REMOVED to allow updating timestamp
+                # if post_id in seen_posts:
+                #    continue
 
                 # --- PRICE (optional) ---
                 price_elem = res.select_one("span.priceinfo")
@@ -336,28 +336,32 @@ async def main():
 
     # Merge new leads into existing
     # Improved Deduplication: Check ID OR (Title + Price + Keyword match) to filter cross-posts
-    existing_ids = {entry["id"] for entry in existing_leads}
-    existing_content_signatures = {
-        (entry.get("title", ""), entry.get("price", ""), entry.get("keyword", ""))
-        for entry in existing_leads
-    }
+    # We use a dictionary for O(1) lookups by ID
+    existing_leads_map = {entry["id"]: entry for entry in existing_leads}
 
-    unique_new_leads = []
+    unique_new_leads_count = 0
+    updated_leads_count = 0
+
     for lead in new_leads:
-        # Create signature for this lead
-        sig = (lead.get("title", ""), lead.get("price", ""), lead.get("keyword", ""))
+        lead_id = lead["id"]
 
-        # Check against IDs and Content Signatures
-        # We only add if BOTH ID is new AND Content Signature is new
-        if lead["id"] not in existing_ids and sig not in existing_content_signatures:
-            unique_new_leads.append(lead)
-            existing_ids.add(lead["id"])
-            existing_content_signatures.add(sig)
+        if lead_id in existing_leads_map:
+            # Update existing lead
+            existing_rec = existing_leads_map[lead_id]
+            existing_rec["timestamp"] = lead["timestamp"]  # Update seen time
+            existing_rec["price"] = lead["price"]  # Update price if changed
+            existing_rec["is_new"] = False  # It's not "new" new, just updated
+            updated_leads_count += 1
         else:
-            # Duplicate found - likely a cross-post
-            pass
+            # New lead
+            existing_leads.append(lead)
+            existing_leads_map[lead_id] = (
+                lead  # Update map to prevent dupes in same run
+            )
+            unique_new_leads_count += 1
 
-    existing_leads.extend(unique_new_leads)
+    # Re-sort by timestamp descending to ensure newest checks are top
+    existing_leads.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
 
     # Save everything
     save_all_leads(existing_leads)
@@ -367,7 +371,7 @@ async def main():
     meta = {
         "last_updated": datetime.datetime.now().isoformat(),
         "total_leads": len(existing_leads),
-        "new_leads_this_run": len(unique_new_leads),
+        "new_leads_this_run": unique_new_leads_count,
     }
     with open("metadata.json", "w") as f:
         json.dump(meta, f)
@@ -375,7 +379,8 @@ async def main():
     print(f"\n{'=' * 60}")
     print("Scrape Complete.")
     print(f"Found {len(new_leads)} raw leads.")
-    print(f"Added {len(unique_new_leads)} unique leads (after deduplication).")
+    print(f"Added {unique_new_leads_count} new leads.")
+    print(f"Updated {updated_leads_count} existing leads (timestamp refresh).")
     print(f"Total leads in DB: {len(existing_leads)}")
     print("=====================")
 
