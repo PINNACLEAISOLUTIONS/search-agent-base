@@ -187,6 +187,27 @@ async def scrape_region(context, region_name, base_url, keyword, seen_posts):
                 price_elem = res.select_one("span.priceinfo")
                 price = price_elem.get_text().strip() if price_elem else ""
 
+                # --- IMAGE (Enhancement) ---
+                image_url = ""
+                img_elem = res.select_one("img")
+                if img_elem:
+                    image_url = img_elem.get("src", "")
+
+                # Fallback: data-ids attribute (common in CL gallery view)
+                if not image_url and res.has_attr("data-ids"):
+                    # data-ids="1:00K0K_keZxtGWi5Z4,1:00..."
+                    data_ids = res["data-ids"].split(",")
+                    if data_ids:
+                        # format: 1:ID -> https://images.craigslist.org/{ID}_300x300.jpg
+                        first_id = (
+                            data_ids[0].split(":")[1]
+                            if ":" in data_ids[0]
+                            else data_ids[0]
+                        )
+                        image_url = (
+                            f"https://images.craigslist.org/{first_id}_300x300.jpg"
+                        )
+
                 # AI Analysis
                 analysis = ai_processor.score_lead(title)
 
@@ -199,6 +220,7 @@ async def scrape_region(context, region_name, base_url, keyword, seen_posts):
                     "score": analysis["score"],
                     "classification": analysis["classification"],
                     "price": price,
+                    "image": image_url,
                     "timestamp": datetime.datetime.now().isoformat(),
                     "is_new": True,
                 }

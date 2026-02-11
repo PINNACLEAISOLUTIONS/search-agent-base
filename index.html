@@ -501,6 +501,28 @@
                         </div>
                         <a href="${lead.link}" target="_blank" rel="noopener" class="btn">View Lead →</a>
                     `;
+
+                    // Insert image if available
+                    if (lead.image) {
+                        const imgContainer = document.createElement('div');
+                        imgContainer.style.height = '200px';
+                        imgContainer.style.overflow = 'hidden';
+                        imgContainer.style.borderRadius = '8px 8px 0 0';
+                        imgContainer.style.marginBottom = '15px';
+                        imgContainer.style.margin = '-22px -22px 15px -22px'; // Negative margin to fill card width
+                        imgContainer.innerHTML = `<img src="${lead.image}" style="width:100%; height:100%; object-fit:cover;" alt="${lead.title}">`;
+
+                        // Insert at top of card
+                        card.insertBefore(imgContainer, card.firstChild);
+                    } else {
+                        // Optional: Add a subtle pattern header if no image
+                        const header = document.createElement('div');
+                        header.style.height = '6px';
+                        header.style.background = isGold ? 'var(--gold)' : 'var(--card-border)';
+                        header.style.margin = '-22px -22px 15px -22px';
+                        card.insertBefore(header, card.firstChild);
+                    }
+
                     container.appendChild(card);
                 });
 

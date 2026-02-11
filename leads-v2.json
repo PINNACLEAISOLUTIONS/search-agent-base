@@ -9,7 +9,7 @@
         "classification": "HIGH-VALUE ANTIQUE",
         "price": "$1,000",
         "timestamp": "2026-02-10T20:03:23.880137",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7880286987",
@@ -21,7 +21,7 @@
         "classification": "HIGH-VALUE ANTIQUE",
         "price": "$165",
         "timestamp": "2026-02-10T20:03:25.029985",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7880287609",
@@ -33,7 +33,7 @@
         "classification": "HIGH-VALUE ANTIQUE",
         "price": "$165",
         "timestamp": "2026-02-10T20:03:25.031005",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7880286395",
@@ -45,6 +45,19 @@
         "classification": "HIGH-VALUE ANTIQUE",
         "price": "$165",
         "timestamp": "2026-02-10T20:03:25.031005",
+        "is_new": false
+    },
+    {
+        "id": "7914291739",
+        "title": "VICTOR TALKING MACHNE VICTROLA",
+        "link": "https://miami.craigslist.org/pbc/atq/d/boca-raton-victor-talking-machne/7914291739.html",
+        "region": "Lakeland",
+        "keyword": "victrola",
+        "score": 4.0,
+        "classification": "HIGH-VALUE ANTIQUE",
+        "price": "$100",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAAtJREFUGFdjYAACAAAFAAGq1chRAAAAAElFTkSuQmCC",
+        "timestamp": "2026-02-10T20:16:43.927524",
         "is_new": true
     },
     {
@@ -57,7 +70,7 @@
         "classification": "BRAND NAME SIGHTING",
         "price": "$100",
         "timestamp": "2026-02-10T20:03:25.032305",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7900667768",
@@ -69,7 +82,7 @@
         "classification": "BRAND NAME SIGHTING",
         "price": "$300",
         "timestamp": "2026-02-10T20:03:25.032305",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7905733140",
@@ -81,7 +94,7 @@
         "classification": "BRAND NAME SIGHTING",
         "price": "$120",
         "timestamp": "2026-02-10T20:03:25.032305",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7910856436",
@@ -93,6 +106,58 @@
         "classification": "BRAND NAME SIGHTING",
         "price": "$550",
         "timestamp": "2026-02-10T20:03:23.881893",
+        "is_new": false
+    },
+    {
+        "id": "7911856275",
+        "title": "Victrola VTA 7541B vintage style",
+        "link": "https://fortmyers.craigslist.org/col/atq/d/naples-victrola-vta-7541b-vintage-style/7911856275.html",
+        "region": "Lakeland",
+        "keyword": "victrola",
+        "score": 3.0,
+        "classification": "BRAND NAME SIGHTING",
+        "price": "$50",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAAtJREFUGFdjYAACAAAFAAGq1chRAAAAAElFTkSuQmCC",
+        "timestamp": "2026-02-10T20:16:43.926502",
+        "is_new": true
+    },
+    {
+        "id": "7876031204",
+        "title": "EDISON 4MIN CYLINDER PHONOGRAPH RECORDS",
+        "link": "https://fortmyers.craigslist.org/lee/atq/d/cape-coral-edison-4min-cylinder/7876031204.html",
+        "region": "Lakeland",
+        "keyword": "phonograph",
+        "score": 3.0,
+        "classification": "BRAND NAME SIGHTING",
+        "price": "$6",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAAtJREFUGFdjYAACAAAFAAGq1chRAAAAAElFTkSuQmCC",
+        "timestamp": "2026-02-10T20:16:45.156397",
+        "is_new": true
+    },
+    {
+        "id": "7876030594",
+        "title": "RARE GERMAN 78rpm \"MAGNET\" GRAPHOPHONE/PHONOGRAPH",
+        "link": "https://fortmyers.craigslist.org/lee/atq/d/cape-coral-rare-german-78rpm-magnet/7876030594.html",
+        "region": "Lakeland",
+        "keyword": "phonograph",
+        "score": 3.0,
+        "classification": "POTENTIAL FIND",
+        "price": "$225",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAAtJREFUGFdjYAACAAAFAAGq1chRAAAAAElFTkSuQmCC",
+        "timestamp": "2026-02-10T20:16:45.156397",
+        "is_new": true
+    },
+    {
+        "id": "7913816927",
+        "title": "ANTIQUE COLUMBIA GRAFONOLA",
+        "link": "https://miami.craigslist.org/pbc/atq/d/west-palm-beach-antique-columbia/7913816927.html",
+        "region": "Lakeland",
+        "keyword": "columbia grafonola",
+        "score": 3.0,
+        "classification": "POTENTIAL FIND",
+        "price": "$950",
+        "image": "https://images.craigslist.org/d/7913816927/00i0i_fAObeLj6ipv_0co0gw_600x450.jpg",
+        "timestamp": "2026-02-10T20:16:46.848114",
         "is_new": true
     },
     {
@@ -105,7 +170,7 @@
         "classification": "BRAND NAME SIGHTING",
         "price": "$300",
         "timestamp": "2026-02-10T20:03:25.031779",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7906917742",
@@ -117,7 +182,7 @@
         "classification": "BRAND NAME SIGHTING",
         "price": "$240",
         "timestamp": "2026-02-10T20:03:25.032305",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7914052780",
@@ -129,7 +194,7 @@
         "classification": "BRAND NAME SIGHTING",
         "price": "$300",
         "timestamp": "2026-02-10T20:03:23.880746",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7905663220",
@@ -141,7 +206,7 @@
         "classification": "BRAND NAME SIGHTING",
         "price": "$790",
         "timestamp": "2026-02-10T20:03:23.881364",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7907544381",
@@ -153,6 +218,58 @@
         "classification": "BRAND NAME SIGHTING",
         "price": "$100",
         "timestamp": "2026-02-10T20:03:23.883584",
+        "is_new": false
+    },
+    {
+        "id": "7876031053",
+        "title": "EDISON HOME PHONOGRAPH IN EXCELLENT",
+        "link": "https://fortmyers.craigslist.org/lee/atq/d/cape-coral-edison-home-phonograph-in/7876031053.html",
+        "region": "Lakeland",
+        "keyword": "phonograph",
+        "score": 2.5,
+        "classification": "BRAND NAME SIGHTING",
+        "price": "$405",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAAtJREFUGFdjYAACAAAFAAGq1chRAAAAAElFTkSuQmCC",
+        "timestamp": "2026-02-10T20:16:45.155837",
+        "is_new": true
+    },
+    {
+        "id": "7876030796",
+        "title": "EDISON MAROON GEM MODEL D PHONOGRAPH",
+        "link": "https://fortmyers.craigslist.org/lee/atq/d/cape-coral-edison-maroon-gem-model/7876030796.html",
+        "region": "Lakeland",
+        "keyword": "phonograph",
+        "score": 2.5,
+        "classification": "BRAND NAME SIGHTING",
+        "price": "$900",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAAtJREFUGFdjYAACAAAFAAGq1chRAAAAAElFTkSuQmCC",
+        "timestamp": "2026-02-10T20:16:45.156917",
+        "is_new": true
+    },
+    {
+        "id": "7879251085",
+        "title": "VERY NICE EDISON GEM MODEL B PHONOGRAPH",
+        "link": "https://fortmyers.craigslist.org/lee/atq/d/cape-coral-very-nice-edison-gem-model/7879251085.html",
+        "region": "Lakeland",
+        "keyword": "phonograph",
+        "score": 2.5,
+        "classification": "BRAND NAME SIGHTING",
+        "price": "$575",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAAtJREFUGFdjYAACAAAFAAGq1chRAAAAAElFTkSuQmCC",
+        "timestamp": "2026-02-10T20:16:45.156917",
+        "is_new": true
+    },
+    {
+        "id": "7881824996",
+        "title": "VICTOR URDANETA WATERCOLOR ACUARELA VENEZUELA \" PAISAJE ANDINO \"",
+        "link": "https://miami.craigslist.org/mdc/atq/d/hialeah-victor-urdaneta-watercolor/7881824996.html",
+        "region": "Lakeland",
+        "keyword": "path\u00e9",
+        "score": 2.5,
+        "classification": "POTENTIAL FIND",
+        "price": "$175",
+        "image": "https://images.craigslist.org/d/7881824996/00P0P_dq2DEKJMYyQ_0ww0oo_600x450.jpg",
+        "timestamp": "2026-02-10T20:16:56.065295",
         "is_new": true
     },
     {
@@ -165,7 +282,7 @@
         "classification": "POTENTIAL FIND",
         "price": "$79",
         "timestamp": "2026-02-10T20:03:27.101272",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7896189057",
@@ -177,7 +294,7 @@
         "classification": "POTENTIAL FIND",
         "price": "$79",
         "timestamp": "2026-02-10T20:03:27.101272",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7900581645",
@@ -189,7 +306,7 @@
         "classification": "POTENTIAL FIND",
         "price": "",
         "timestamp": "2026-02-10T20:03:27.101803",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7896189251",
@@ -201,7 +318,7 @@
         "classification": "POTENTIAL FIND",
         "price": "$55",
         "timestamp": "2026-02-10T20:03:27.101803",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7896189164",
@@ -213,7 +330,7 @@
         "classification": "POTENTIAL FIND",
         "price": "$79",
         "timestamp": "2026-02-10T20:03:27.101803",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7895738279",
@@ -225,7 +342,7 @@
         "classification": "POTENTIAL FIND",
         "price": "$79",
         "timestamp": "2026-02-10T20:03:27.102320",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7908040236",
@@ -237,7 +354,7 @@
         "classification": "LOW INTEREST / MODERN",
         "price": "$525",
         "timestamp": "2026-02-10T20:03:23.882416",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7912735099",
@@ -249,7 +366,7 @@
         "classification": "LOW INTEREST / MODERN",
         "price": "$150",
         "timestamp": "2026-02-10T20:03:23.884596",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7913622325",
@@ -261,7 +378,7 @@
         "classification": "LOW INTEREST / MODERN",
         "price": "$150",
         "timestamp": "2026-02-10T20:03:23.884596",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7912946455",
@@ -273,7 +390,7 @@
         "classification": "LOW INTEREST / MODERN",
         "price": "$250",
         "timestamp": "2026-02-10T20:03:27.099582",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7879882276",
@@ -285,7 +402,7 @@
         "classification": "LOW INTEREST / MODERN",
         "price": "$585",
         "timestamp": "2026-02-10T20:03:27.100118",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7906705506",
@@ -297,7 +414,7 @@
         "classification": "LOW INTEREST / MODERN",
         "price": "$50",
         "timestamp": "2026-02-10T20:03:29.834723",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7907993828",
@@ -309,7 +426,7 @@
         "classification": "LOW INTEREST / MODERN",
         "price": "$800",
         "timestamp": "2026-02-10T20:03:29.835277",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7903826415",
@@ -321,7 +438,7 @@
         "classification": "LOW INTEREST / MODERN",
         "price": "$100",
         "timestamp": "2026-02-10T20:03:29.835277",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7903823688",
@@ -333,7 +450,7 @@
         "classification": "LOW INTEREST / MODERN",
         "price": "$100",
         "timestamp": "2026-02-10T20:03:29.835277",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7889873857",
@@ -345,7 +462,7 @@
         "classification": "LOW INTEREST / MODERN",
         "price": "$1,000",
         "timestamp": "2026-02-10T20:03:29.835906",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7912465254",
@@ -357,6 +474,45 @@
         "classification": "LOW INTEREST / MODERN",
         "price": "$200",
         "timestamp": "2026-02-10T20:03:29.836534",
+        "is_new": false
+    },
+    {
+        "id": "7909247630",
+        "title": "Antique Farmhouse Table",
+        "link": "https://fortmyers.craigslist.org/lee/atq/d/fort-myers-antique-farmhouse-table/7909247630.html",
+        "region": "Lakeland",
+        "keyword": "edison",
+        "score": 1.5,
+        "classification": "LOW INTEREST / MODERN",
+        "price": "$200",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAAtJREFUGFdjYAACAAAFAAGq1chRAAAAAElFTkSuQmCC",
+        "timestamp": "2026-02-10T20:16:48.867567",
+        "is_new": true
+    },
+    {
+        "id": "7909249443",
+        "title": "Antique Bar Cabinet",
+        "link": "https://fortmyers.craigslist.org/lee/atq/d/fort-myers-antique-bar-cabinet/7909249443.html",
+        "region": "Lakeland",
+        "keyword": "edison",
+        "score": 1.5,
+        "classification": "LOW INTEREST / MODERN",
+        "price": "$400",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAAtJREFUGFdjYAACAAAFAAGq1chRAAAAAElFTkSuQmCC",
+        "timestamp": "2026-02-10T20:16:48.868351",
+        "is_new": true
+    },
+    {
+        "id": "7914265464",
+        "title": "Vintage Record Player",
+        "link": "https://miami.craigslist.org/pbc/atq/d/delray-beach-vintage-record-player/7914265464.html",
+        "region": "Lakeland",
+        "keyword": "antique record player",
+        "score": 1.5,
+        "classification": "LOW INTEREST / MODERN",
+        "price": "$300",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAAtJREFUGFdjYAACAAAFAAGq1chRAAAAAElFTkSuQmCC",
+        "timestamp": "2026-02-10T20:16:49.280443",
         "is_new": true
     },
     {
@@ -369,7 +525,7 @@
         "classification": "LOW INTEREST / MODERN",
         "price": "$700",
         "timestamp": "2026-02-10T20:03:23.882416",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7879911199",
@@ -381,7 +537,7 @@
         "classification": "LOW INTEREST / MODERN",
         "price": "$525",
         "timestamp": "2026-02-10T20:03:23.882416",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7905661999",
@@ -393,7 +549,7 @@
         "classification": "LOW INTEREST / MODERN",
         "price": "$525",
         "timestamp": "2026-02-10T20:03:23.883584",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7909844832",
@@ -405,7 +561,7 @@
         "classification": "LOW INTEREST / MODERN",
         "price": "$75",
         "timestamp": "2026-02-10T20:03:23.883584",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7887575538",
@@ -417,7 +573,7 @@
         "classification": "LOW INTEREST / MODERN",
         "price": "$24",
         "timestamp": "2026-02-10T20:03:27.100118",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7887576563",
@@ -429,7 +585,7 @@
         "classification": "LOW INTEREST / MODERN",
         "price": "$30",
         "timestamp": "2026-02-10T20:03:27.100118",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7887576156",
@@ -441,7 +597,7 @@
         "classification": "LOW INTEREST / MODERN",
         "price": "$37",
         "timestamp": "2026-02-10T20:03:27.100746",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7895968079",
@@ -453,7 +609,7 @@
         "classification": "LOW INTEREST / MODERN",
         "price": "$80",
         "timestamp": "2026-02-10T20:03:27.102838",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7913218858",
@@ -465,7 +621,7 @@
         "classification": "LOW INTEREST / MODERN",
         "price": "$115",
         "timestamp": "2026-02-10T20:03:27.102838",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7907477168",
@@ -477,7 +633,7 @@
         "classification": "LOW INTEREST / MODERN",
         "price": "$300",
         "timestamp": "2026-02-10T20:03:29.835906",
-        "is_new": true
+        "is_new": false
     },
     {
         "id": "7908736949",
@@ -489,6 +645,6 @@
         "classification": "LOW INTEREST / MODERN",
         "price": "$20",
         "timestamp": "2026-02-10T20:03:29.835906",
-        "is_new": true
+        "is_new": false
     }
 ]
