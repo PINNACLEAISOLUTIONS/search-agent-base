@@ -1,16 +1,16 @@
-import os
+import json
+import csv
+import sys
 import asyncio
 import datetime
 import random
-import psycopg2
+
+# Fix Windows console encoding for emoji output
+if sys.stdout.encoding != "utf-8":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
 from ai_lead_processor import AIAntiqueProcessor
-
-# DATABASE CONNECTION
-# In production, use os.getenv("DATABASE_URL")
-# Using the connection string you provided
-DB_URL = "postgresql://postgres:Nazi1035!!!@db.lvevatkufgiwzmcyyuon.supabase.co:5432/postgres"
 
 # --- CONFIGURATION ---
 REGIONS = {
@@ -52,50 +52,83 @@ SEARCH_KEYWORDS = [
     "cylinder player",
 ]
 
+# Output files
+LEADS_JSON = "leads.json"
+LEADS_V2_JSON = "leads-v2.json"
+LEADS_CSV = "leads.csv"
+SEEN_POSTS_FILE = "seen_posts.json"
+
 ai_processor = AIAntiqueProcessor()
 
+# In-memory store during this run
+all_leads: list[dict] = []
 
-def save_lead_to_db(lead):
-    """Inserts a single lead into Supabase immediately."""
+
+def load_seen_posts():
+    """Load previously seen post IDs to avoid duplicates."""
     try:
-        conn = psycopg2.connect(DB_URL)
-        cur = conn.cursor()
-
-        # Upsert: Insert or Update if ID exists
-        cur.execute(
-            """
-            INSERT INTO leads (id, title, link, region, keyword, score, classification, timestamp, is_new)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), TRUE)
-            ON CONFLICT (id) DO UPDATE SET
-                score = EXCLUDED.score,
-                is_new = FALSE
-        """,
-            (
-                lead["id"],
-                lead["title"],
-                lead["link"],
-                lead["region"],
-                lead["keyword"],
-                lead["score"],
-                lead["classification"],
-            ),
-        )
-
-        conn.commit()
-        cur.close()
-        conn.close()
-        print(f"    💾 Saved to DB: {lead['title']}")
-        return True
-    except Exception as e:
-        print(f"    ❌ DB Error: {e}")
-        return False
+        with open(SEEN_POSTS_FILE, "r") as f:
+            return set(json.load(f))
+    except (FileNotFoundError, json.JSONDecodeError):
+        return set()
 
 
-async def scrape_region(context, region_name, base_url, keyword):
-    print(f"  Searching {region_name} for '{keyword}'...")
+def save_seen_posts(seen):
+    """Save seen post IDs."""
+    with open(SEEN_POSTS_FILE, "w") as f:
+        json.dump(list(seen), f)
+
+
+def load_existing_leads():
+    """Load existing leads so we accumulate over time."""
+    try:
+        with open(LEADS_JSON, "r") as f:
+            data = json.load(f)
+            if isinstance(data, list):
+                return data
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass
+    return []
+
+
+def save_all_leads(leads):
+    """Save leads to all output files (JSON + CSV)."""
+    # Sort by score descending
+    leads.sort(key=lambda x: x.get("score", 0), reverse=True)
+
+    # Save leads.json
+    with open(LEADS_JSON, "w") as f:
+        json.dump(leads, f, indent=4)
+
+    # Save leads-v2.json (same data, consumed by index.html)
+    with open(LEADS_V2_JSON, "w") as f:
+        json.dump(leads, f, indent=4)
+
+    # Save leads.csv
+    if leads:
+        fieldnames = [
+            "id",
+            "title",
+            "link",
+            "region",
+            "keyword",
+            "score",
+            "classification",
+            "timestamp",
+            "is_new",
+        ]
+        with open(LEADS_CSV, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
+            writer.writeheader()
+            writer.writerows(leads)
+
+    print(f"💾 Saved {len(leads)} leads to {LEADS_JSON}, {LEADS_V2_JSON}, {LEADS_CSV}")
+
+
+async def scrape_region(context, region_name, base_url, keyword, seen_posts):
+    """Scrape a single region+keyword combo. Returns list of new leads found."""
     search_url = f"{base_url}/search/atq?query={keyword}"
-
-    leads_found = 0
+    new_leads = []
     page = None
 
     try:
@@ -106,21 +139,53 @@ async def scrape_region(context, region_name, base_url, keyword):
 
         content = await page.content()
         soup = BeautifulSoup(content, "html.parser")
+
+        # Craigslist 2026 uses .cl-search-result divs
         results = soup.select(".cl-search-result") or soup.select(".result-row")
 
         for res in results:
             try:
-                title_elem = res.select_one(".titlestring") or res.select_one(
-                    ".result-title"
-                )
+                # --- TITLE ---
+                # Primary: span.label inside a.posting-title
+                title_elem = res.select_one("a.posting-title span.label")
+                # Fallback 1: the div's title attribute
                 if not title_elem:
+                    title = res.get("title", "").strip()
+                else:
+                    title = title_elem.get_text().strip()
+                # Fallback 2: old .titlestring selector
+                if not title:
+                    old_title = res.select_one(".titlestring") or res.select_one(
+                        ".result-title"
+                    )
+                    if old_title:
+                        title = old_title.get_text().strip()
+                if not title:
                     continue
 
-                title = title_elem.get_text().strip()
-                link = title_elem["href"]
+                # --- LINK ---
+                link_elem = (
+                    res.select_one("a.posting-title")
+                    or res.select_one("a.main")
+                    or res.select_one("a")
+                )
+                if not link_elem:
+                    continue
+                link = link_elem.get("href", "")
+                if not link:
+                    continue
                 if not link.startswith("http"):
                     link = base_url + link
+
                 post_id = link.split("/")[-1].split(".")[0]
+
+                # Skip if we've seen this before
+                if post_id in seen_posts:
+                    continue
+
+                # --- PRICE (optional) ---
+                price_elem = res.select_one("span.priceinfo")
+                price = price_elem.get_text().strip() if price_elem else ""
 
                 # AI Analysis
                 analysis = ai_processor.score_lead(title)
@@ -133,62 +198,95 @@ async def scrape_region(context, region_name, base_url, keyword):
                     "keyword": keyword,
                     "score": analysis["score"],
                     "classification": analysis["classification"],
+                    "price": price,
+                    "timestamp": datetime.datetime.now().isoformat(),
+                    "is_new": True,
                 }
 
-                # Save immediately to DB
-                save_lead_to_db(lead)
-                leads_found += 1
+                new_leads.append(lead)
+                seen_posts.add(post_id)
 
-                if analysis["score"] >= 4.0:
-                    print(f"    [GOLD FIND] {title}")
+                tag = "🥇 GOLD" if analysis["score"] >= 4.0 else "✅"
+                price_str = f" {price}" if price else ""
+                print(
+                    f"    {tag} [{region_name}] {title}{price_str} (Score: {analysis['score']})"
+                )
 
             except Exception:
                 continue
 
     except Exception as e:
-        print(f"⚠️ Failed {region_name}: {e}")
+        print(f"  ⚠️ Failed {region_name}/{keyword}: {e}")
     finally:
         if page:
             try:
                 await page.close()
-            except:
+            except Exception:
                 pass
 
-    return leads_found
+    return new_leads
 
 
 async def main():
-    print(f"--- STARTING PRO SCRAPER (SUPABASE) ---")
+    print(f"{'=' * 60}")
+    print(
+        f"  OLDTIMECRANK SCRAPER — {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}"
+    )
+    print(f"  Regions: {len(REGIONS)} | Keywords: {len(SEARCH_KEYWORDS)}")
+    print(f"{'=' * 60}")
+
+    # Load state
+    seen_posts = load_seen_posts()
+    existing_leads = load_existing_leads()
+    # Mark old leads as not new
+    for lead in existing_leads:
+        lead["is_new"] = False
+
+    print(
+        f"📂 Loaded {len(existing_leads)} existing leads, {len(seen_posts)} seen posts"
+    )
+
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
-        # Use a real user agent
         context = await browser.new_context(
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         )
 
-        tasks = []
-        # Batch requests to avoid blocking
-        items = list(REGIONS.items())
-        # Random shuffle to avoid patterns
-        random.shuffle(items)
-
-        # Using a semaphore to limit concurrency
+        # Using a semaphore to limit concurrency (avoid getting blocked)
         sem = asyncio.Semaphore(3)
 
         async def controlled_scrape(r_name, r_url, kw):
             async with sem:
-                return await scrape_region(context, r_name, r_url, kw)
+                return await scrape_region(context, r_name, r_url, kw, seen_posts)
 
+        # Shuffle regions to avoid predictable patterns
+        items = list(REGIONS.items())
+        random.shuffle(items)
+
+        tasks = []
         for region_name, url in items:
             for keyword in SEARCH_KEYWORDS:
                 tasks.append(controlled_scrape(region_name, url, keyword))
 
         # Run all tasks
-        if tasks:
-            await asyncio.gather(*tasks)
+        results = await asyncio.gather(*tasks)
+        new_leads = [lead for batch in results for lead in batch]
 
         await browser.close()
-    print("--- SCRAPE COMPLETE ---")
+
+    # Merge new leads into existing
+    existing_ids = {entry["id"] for entry in existing_leads}
+    for lead in new_leads:
+        if lead["id"] not in existing_ids:
+            existing_leads.append(lead)
+
+    # Save everything
+    save_all_leads(existing_leads)
+    save_seen_posts(seen_posts)
+
+    print(f"\n{'=' * 60}")
+    print(f"  DONE — {len(new_leads)} new leads found, {len(existing_leads)} total")
+    print(f"{'=' * 60}")
 
 
 if __name__ == "__main__":
