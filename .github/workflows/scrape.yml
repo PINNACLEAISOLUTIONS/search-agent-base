@@ -27,7 +27,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install playwright beautifulsoup4 pandas playwright-stealth
+          pip install playwright beautifulsoup4 pandas playwright-stealth pydantic
           playwright install chromium
           playwright install-deps
 
