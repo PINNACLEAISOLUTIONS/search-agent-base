@@ -361,7 +361,7 @@
         <header>
             <h1>⚙️ OldTimeCrank</h1>
             <p class="subtitle">Live Antique Phonograph Discovery — Florida State-Wide</p>
-            <div class="auto-badge">🤖 Auto-updates every hour via GitHub Actions</div>
+            <div class="auto-badge">🤖 Auto-updates every 12 hours via GitHub Actions</div>
         </header>
 
         <div class="status-bar">
@@ -481,7 +481,15 @@
                     card.className = `card ${isGold ? 'gold-find' : ''}`;
 
                     const scoreColor = isGold ? 'var(--gold)' : (lead.score >= 3 ? 'var(--success)' : 'var(--text-muted)');
-                    const dateStr = lead.timestamp ? new Date(lead.timestamp).toLocaleDateString() : 'Recent';
+                    // Use posted_date if available, fallback to timestamp
+                    const rawDate = lead.posted_date || lead.timestamp || '';
+                    let dateStr = 'Recent';
+                    if (rawDate) {
+                        const d = new Date(rawDate.replace(' ', 'T'));
+                        if (!isNaN(d)) {
+                            dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                        }
+                    }
 
                     let tag = '';
                     if (isGold) tag = '<span class="tag tag-gold">★ Gold</span>';
@@ -502,17 +510,21 @@
                         <a href="${lead.link}" target="_blank" rel="noopener" class="btn">View Lead →</a>
                     `;
 
-                    // Insert image if available
-                    if (lead.image) {
+                    // Insert image if available (skip tiny base64 placeholders)
+                    const hasRealImage = lead.image && !lead.image.startsWith('data:image') && lead.image !== '';
+                    if (hasRealImage) {
                         const imgContainer = document.createElement('div');
                         imgContainer.style.height = '200px';
                         imgContainer.style.overflow = 'hidden';
                         imgContainer.style.borderRadius = '8px 8px 0 0';
                         imgContainer.style.marginBottom = '15px';
-                        imgContainer.style.margin = '-22px -22px 15px -22px'; // Negative margin to fill card width
-                        imgContainer.innerHTML = `<img src="${lead.image}" style="width:100%; height:100%; object-fit:cover;" alt="${lead.title}">`;
-
-                        // Insert at top of card
+                        imgContainer.style.margin = '-22px -22px 15px -22px';
+                        const img = document.createElement('img');
+                        img.src = lead.image;
+                        img.alt = lead.title;
+                        img.style.cssText = 'width:100%; height:100%; object-fit:cover;';
+                        img.onerror = function () { imgContainer.style.display = 'none'; };
+                        imgContainer.appendChild(img);
                         card.insertBefore(imgContainer, card.firstChild);
                     } else {
                         // Optional: Add a subtle pattern header if no image
