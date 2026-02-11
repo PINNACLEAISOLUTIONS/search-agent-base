@@ -473,6 +473,13 @@
                     updatedLabel.textContent = `Last scrape: ${lastScrape.toLocaleString()}`;
                 }
 
+                // Sort: newest listing first (by posted_date, then timestamp)
+                leads.sort((a, b) => {
+                    const dateA = (a.posted_date || a.timestamp || '').replace(' ', 'T');
+                    const dateB = (b.posted_date || b.timestamp || '').replace(' ', 'T');
+                    return dateB.localeCompare(dateA);
+                });
+
                 // Render cards
                 container.innerHTML = '';
                 leads.forEach(lead => {
