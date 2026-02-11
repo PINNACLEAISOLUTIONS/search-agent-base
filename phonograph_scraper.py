@@ -297,18 +297,40 @@ async def main():
         await browser.close()
 
     # Merge new leads into existing
+    # Improved Deduplication: Check ID OR (Title + Price + Keyword match) to filter cross-posts
     existing_ids = {entry["id"] for entry in existing_leads}
+    existing_content_signatures = {
+        (entry.get("title", ""), entry.get("price", ""), entry.get("keyword", ""))
+        for entry in existing_leads
+    }
+
+    unique_new_leads = []
     for lead in new_leads:
-        if lead["id"] not in existing_ids:
-            existing_leads.append(lead)
+        # Create signature for this lead
+        sig = (lead.get("title", ""), lead.get("price", ""), lead.get("keyword", ""))
+
+        # Check against IDs and Content Signatures
+        # We only add if BOTH ID is new AND Content Signature is new
+        if lead["id"] not in existing_ids and sig not in existing_content_signatures:
+            unique_new_leads.append(lead)
+            existing_ids.add(lead["id"])
+            existing_content_signatures.add(sig)
+        else:
+            # Duplicate found - likely a cross-post
+            pass
+
+    existing_leads.extend(unique_new_leads)
 
     # Save everything
     save_all_leads(existing_leads)
     save_seen_posts(seen_posts)
 
     print(f"\n{'=' * 60}")
-    print(f"  DONE — {len(new_leads)} new leads found, {len(existing_leads)} total")
-    print(f"{'=' * 60}")
+    print("✅ Scrape Complete.")
+    print(f"🆕 Found {len(new_leads)} raw leads.")
+    print(f"✨ Added {len(unique_new_leads)} unique leads (after deduplication).")
+    print(f"💾 Total leads in DB: {len(existing_leads)}")
+    print("=====================")
 
 
 if __name__ == "__main__":
