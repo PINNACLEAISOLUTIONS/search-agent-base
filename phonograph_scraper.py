@@ -5,12 +5,14 @@ import asyncio
 import datetime
 import random
 
-# Fix Windows console encoding for emoji output
+# Fix Windows console encoding for emoji output (ignore mypy error for reconfigure)
 if sys.stdout.encoding != "utf-8":
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore
+
 from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
 from ai_lead_processor import AIAntiqueProcessor
+from models import Lead
 
 # --- CONFIGURATION ---
 REGIONS = {
@@ -93,8 +95,13 @@ def load_existing_leads():
 
 def save_all_leads(leads):
     """Save leads to all output files (JSON + CSV)."""
-    # Sort by score descending
-    leads.sort(key=lambda x: x.get("score", 0), reverse=True)
+    # Sort by posted_date desc (newest first), then score desc
+    # Handle missing posted_date by treating as 'oldest' or 'newest' depending on pref.
+    # Here we treat empty dates as old.
+    leads.sort(
+        key=lambda x: (x.get("posted_date", "") or "0000", x.get("score", 0)),
+        reverse=True,
+    )
 
     # Save leads.json
     with open(LEADS_JSON, "w") as f:
@@ -208,31 +215,50 @@ async def scrape_region(context, region_name, base_url, keyword, seen_posts):
                             f"https://images.craigslist.org/{first_id}_300x300.jpg"
                         )
 
+                # --- DATE (New Feature) ---
+                date_elem = res.select_one("time.result-date")
+                posted_date = ""
+                if date_elem:
+                    posted_date = date_elem.get(
+                        "datetime", ""
+                    )  # e.g., "2026-02-10 21:00"
+
+                # If no specific date found, fallback to scrape time but mark it
+                if not posted_date:
+                    posted_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+
                 # AI Analysis
                 analysis = ai_processor.score_lead(title)
 
-                lead = {
-                    "id": post_id,
-                    "title": title,
-                    "link": link,
-                    "region": region_name,
-                    "keyword": keyword,
-                    "score": analysis["score"],
-                    "classification": analysis["classification"],
-                    "price": price,
-                    "image": image_url,
-                    "timestamp": datetime.datetime.now().isoformat(),
-                    "is_new": True,
-                }
+                # Create Lead using Pydantic Model (Validation)
+                try:
+                    lead_obj = Lead(
+                        id=post_id,
+                        title=title,
+                        link=link,
+                        region=region_name,
+                        keyword=keyword,
+                        score=analysis["score"],
+                        classification=analysis["classification"],
+                        price=price,
+                        image=image_url,
+                        timestamp=datetime.datetime.now().isoformat(),  # Scrape time
+                        posted_date=posted_date,  # Original post time
+                        is_new=True,
+                    )
 
-                new_leads.append(lead)
-                seen_posts.add(post_id)
+                    # Convert back to dict for storage compatibility
+                    new_leads.append(lead_obj.model_dump())
+                    seen_posts.add(post_id)
 
-                tag = "🥇 GOLD" if analysis["score"] >= 4.0 else "✅"
-                price_str = f" {price}" if price else ""
-                print(
-                    f"    {tag} [{region_name}] {title}{price_str} (Score: {analysis['score']})"
-                )
+                    tag = "🥇 GOLD" if analysis["score"] >= 4.0 else "✅"
+                    price_str = f" {price}" if price else ""
+                    print(
+                        f"    {tag} [{region_name}] {title}{price_str} (Date: {posted_date})"
+                    )
+                except Exception as val_err:
+                    print(f"    ⚠️ Data Validation Failed: {val_err}")
+                    continue
 
             except Exception:
                 continue
