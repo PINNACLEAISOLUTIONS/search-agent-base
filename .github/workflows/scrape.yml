@@ -2,9 +2,12 @@ name: OldTimeCrank Scraper + Deploy
 
 on:
   schedule:
-    # Run every 12 hours
-    - cron: "0 */12 * * *"
+    # Run every 6 hours
+    - cron: "0 */6 * * *"
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 permissions:
   contents: write

@@ -237,7 +237,7 @@ async def scrape_region(context, region_name, base_url, keyword, seen_posts):
 
                 # If no date from search result, fallback to scrape time
                 if not posted_date:
-                    posted_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+                    posted_date = datetime.datetime.now().isoformat()
 
                 # AI Analysis
                 analysis = ai_processor.score_lead(title)
