@@ -39,9 +39,9 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add leads.json leads-v2.json leads.csv seen_posts.json metadata.json || true
-          git diff --staged --quiet || git commit -m "🤖 Auto-update leads $(date -u +'%Y-%m-%d %H:%M UTC')"
-          git push || true
+          git add leads.json leads-v2.json leads.csv seen_posts.json metadata.json
+          git commit -m "🤖 Auto-update leads $(date -u +'%Y-%m-%d %H:%M UTC')" || echo "No changes to commit"
+          git push origin main || echo "Failed to push to GitHub, continuing to deploy"
 
       - name: Install Netlify CLI
         run: npm install -g netlify-cli
@@ -49,5 +49,5 @@ jobs:
       - name: Deploy to Netlify
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: b701cda9-81ae-46f1-9a24-9d09740aa65a
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID || 'b701cda9-81ae-46f1-9a24-9d09740aa65a' }}
         run: netlify deploy --prod --dir=. --site=$NETLIFY_SITE_ID

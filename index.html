@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OLDTIMECRANK - ANTIQUE PHONOGRAPH ENGINE</title>
     <meta name="description"
-        content="Live antique phonograph discovery engine - scanning all Florida Craigslist regions automatically every hour.">
+        content="Live antique phonograph discovery engine - scanning all Florida Craigslist regions automatically every 6 hours.">
     <link
         href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600&display=swap"
         rel="stylesheet">
@@ -342,7 +342,7 @@
         <header>
             <h1>⚙️ OldTimeCrank</h1>
             <p class="subtitle">Live Antique Phonograph Discovery — Florida State-Wide</p>
-            <div class="auto-badge">🤖 Auto-updates every 12 hours via GitHub Actions</div>
+            <div class="auto-badge">🤖 Auto-updates every 6 hours via GitHub Actions</div>
         </header>
 
         <div class="status-bar">
@@ -433,7 +433,7 @@
                 }
 
                 if (!leads || leads.length === 0) {
-                    container.innerHTML = '<div id="status">No leads found yet. The scraper runs automatically every hour — check back soon!</div>';
+                    container.innerHTML = '<div id="status">No leads found yet. The scraper runs automatically every 6 hours — check back soon!</div>';
                     sourceLabel.textContent = 'Waiting for first scrape';
                     return;
                 }

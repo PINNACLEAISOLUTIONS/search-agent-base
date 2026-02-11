@@ -10,6 +10,7 @@ if sys.stdout.encoding != "utf-8":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore
 
 from playwright.async_api import async_playwright
+from playwright_stealth import stealth_async
 from bs4 import BeautifulSoup
 from ai_lead_processor import AIAntiqueProcessor
 from models import Lead
@@ -36,6 +37,7 @@ REGIONS = {
     "Naples": "https://naples.craigslist.org",
     "Heartland": "https://cfl.craigslist.org",
     "Lake City": "https://lakecity.craigslist.org",
+    "Atlanta": "https://atlanta.craigslist.org",
 }
 
 SEARCH_KEYWORDS = [
@@ -140,6 +142,7 @@ async def scrape_region(context, region_name, base_url, keyword, seen_posts):
 
     try:
         page = await context.new_page()
+        await stealth_async(page)
         await page.goto(search_url, wait_until="domcontentloaded", timeout=45000)
         # Human-like delay
         await asyncio.sleep(random.uniform(2, 5))
@@ -149,6 +152,7 @@ async def scrape_region(context, region_name, base_url, keyword, seen_posts):
 
         # Craigslist 2026 uses .cl-search-result divs
         results = soup.select(".cl-search-result") or soup.select(".result-row")
+        print(f"    Found {len(results)} raw results for {region_name}")
 
         for res in results:
             try:
@@ -198,7 +202,10 @@ async def scrape_region(context, region_name, base_url, keyword, seen_posts):
                 image_url = ""
                 img_elem = res.select_one("img")
                 if img_elem:
-                    image_url = img_elem.get("src", "")
+                    tmp_url = img_elem.get("src", "")
+                    # Ignore tiny base64 placeholders
+                    if tmp_url and not tmp_url.startswith("data:image"):
+                        image_url = tmp_url
 
                 # Fallback: data-ids attribute (common in CL gallery view)
                 if not image_url and res.has_attr("data-ids"):
