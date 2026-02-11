@@ -84,7 +84,7 @@ def save_seen_posts(seen):
 def load_existing_leads():
     """Load existing leads so we accumulate over time."""
     try:
-        with open(LEADS_JSON, "r") as f:
+        with open(LEADS_JSON, "r", encoding="utf-8") as f:
             data = json.load(f)
             if isinstance(data, list):
                 return data
@@ -104,11 +104,11 @@ def save_all_leads(leads):
     )
 
     # Save leads.json
-    with open(LEADS_JSON, "w") as f:
+    with open(LEADS_JSON, "w", encoding="utf-8") as f:
         json.dump(leads, f, indent=4)
 
     # Save leads-v2.json (same data, consumed by index.html)
-    with open(LEADS_V2_JSON, "w") as f:
+    with open(LEADS_V2_JSON, "w", encoding="utf-8") as f:
         json.dump(leads, f, indent=4)
 
     # Save leads.csv
@@ -306,33 +306,47 @@ async def main():
         f"📂 Loaded {len(existing_leads)} existing leads, {len(seen_posts)} seen posts"
     )
 
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
-        context = await browser.new_context(
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        )
+    new_leads = []
 
-        # Using a semaphore to limit concurrency (avoid getting blocked)
-        sem = asyncio.Semaphore(3)
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            context = await browser.new_context(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            )
 
-        async def controlled_scrape(r_name, r_url, kw):
-            async with sem:
-                return await scrape_region(context, r_name, r_url, kw, seen_posts)
+            # Using a semaphore to limit concurrency (avoid getting blocked)
+            sem = asyncio.Semaphore(3)
 
-        # Shuffle regions to avoid predictable patterns
-        items = list(REGIONS.items())
-        random.shuffle(items)
+            async def controlled_scrape(r_name, r_url, kw):
+                async with sem:
+                    return await scrape_region(context, r_name, r_url, kw, seen_posts)
 
-        tasks = []
-        for region_name, url in items:
-            for keyword in SEARCH_KEYWORDS:
-                tasks.append(controlled_scrape(region_name, url, keyword))
+            # Shuffle regions to avoid predictable patterns
+            items = list(REGIONS.items())
+            random.shuffle(items)
 
-        # Run all tasks
-        results = await asyncio.gather(*tasks)
-        new_leads = [lead for batch in results for lead in batch]
+            tasks = []
+            for region_name, url in items:
+                for keyword in SEARCH_KEYWORDS:
+                    tasks.append(controlled_scrape(region_name, url, keyword))
 
-        await browser.close()
+            # Run all tasks, ignore failures so we keep what we got
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            for batch in results:
+                if isinstance(batch, list):
+                    new_leads.extend(batch)
+                else:
+                    print(f"  Create Task Error: {batch}")
+
+            try:
+                await browser.close()
+            except Exception:
+                pass
+    except Exception as e:
+        print(f"CRITICAL PLAYWRIGHT ERROR: {e}")
+        # Continue to save whatever we found
 
     # Merge new leads into existing
     # Improved Deduplication: Check ID OR (Title + Price + Keyword match) to filter cross-posts
