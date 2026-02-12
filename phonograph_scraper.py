@@ -203,7 +203,7 @@ class PhonographScraper:
                                 if dt > now + timedelta(days=2):
                                     dt = dt.replace(year=now.year - 1)
                                 posted_date = dt.strftime("%Y-%m-%d")
-                            except Exception:
+                            except ValueError:
                                 pass
 
                     # AI Score
@@ -270,8 +270,13 @@ class PhonographScraper:
                             x["posted_date"] = "1970-01-01"
 
                     self.all_leads.extend(existing)
-            except Exception:
-                pass
+                            except (FileNotFoundError, json.JSONDecodeError):
+                                pass
+                        
+                        # Aggressive Date Check
+                        pd = x.get("posted_date", "")
+                        if not pd or len(pd) != 10 or not pd.startswith("20"):
+                            x["posted_date"] = "1970-01-01"
 
             for region, base_url in SEARCH_REGIONS.items():
                 for keyword in KEYWORDS:
@@ -286,7 +291,7 @@ class PhonographScraper:
             await browser.close()
 
             # De-duplicate just in case (by ID)
-            unique_vals = {l["id"]: l for l in self.all_leads}.values()
+            unique_vals = {lead["id"]: lead for lead in self.all_leads}.values()
             self.all_leads = list(unique_vals)
 
             self.save_leads()
