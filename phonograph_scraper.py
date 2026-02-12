@@ -270,13 +270,14 @@ class PhonographScraper:
                             x["posted_date"] = "1970-01-01"
 
                     self.all_leads.extend(existing)
-                            except (FileNotFoundError, json.JSONDecodeError):
-                                pass
-                        
-                        # Aggressive Date Check
-                        pd = x.get("posted_date", "")
-                        if not pd or len(pd) != 10 or not pd.startswith("20"):
-                            x["posted_date"] = "1970-01-01"
+            except (FileNotFoundError, json.JSONDecodeError):
+                pass
+
+            # Aggressive Date Check
+            for x in self.all_leads:
+                pd = x.get("posted_date", "")
+                if not pd or len(pd) != 10 or not pd.startswith("20"):
+                    x["posted_date"] = "1970-01-01"
 
             for region, base_url in SEARCH_REGIONS.items():
                 for keyword in KEYWORDS:
