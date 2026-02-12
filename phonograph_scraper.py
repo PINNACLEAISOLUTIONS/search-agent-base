@@ -4,11 +4,10 @@ import json
 import re
 import csv
 import logging
-import os
 from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
-from playwright.async_api import async_playwright
-from playwright_stealth import stealth_async
+from playwright.async_api import async_playwright  # type: ignore
+from playwright_stealth import stealth_async  # type: ignore
 from ai_lead_processor import AIAntiqueProcessor
 
 # Configure logging
@@ -67,6 +66,11 @@ class PhonographScraper:
             json.dump(list(self.seen_posts), f)
 
     def save_leads(self):
+        # Sort by date (newest first) before saving
+        self.all_leads.sort(
+            key=lambda x: x.get("posted_date", "1970-01-01"), reverse=True
+        )
+
         # JSON-V2 (Frontend)
         with open("leads-v2.json", "w") as f:
             json.dump(self.all_leads, f, indent=2)
@@ -93,7 +97,7 @@ class PhonographScraper:
                     "last_updated": datetime.now().isoformat(),
                     "total_leads": len(self.all_leads),
                     "new_leads_this_run": len(
-                        [l for l in self.all_leads if l.get("is_new", False)]
+                        [lead for lead in self.all_leads if lead.get("is_new", False)]
                     ),
                 },
                 f,
@@ -111,7 +115,7 @@ class PhonographScraper:
             # Wait a bit for potential JS hydration
             try:
                 await page.wait_for_selector(".cl-search-result", timeout=5000)
-            except:
+            except Exception:  # Timeout or other error
                 pass
 
             content = await page.content()
@@ -187,21 +191,8 @@ class PhonographScraper:
                     # Method B: data-ids attribute (Most reliable for gallery view)
                     # Often on the result-row or a child
                     # In new CL, it might be deep in the structure or logic
-                    # Let's inspect the HTML we saw earlier: <div data-pid="..." class="cl-search-result ...">
 
-                    # It seems CL 2026 uses `data-ids` less in the top div and more standard img src
-                    # But the img src was base64 in my debug.
-                    # WAIT! The JSON-LD had images!
-                    # Let's try to match JSON-LD item by position if possible? No, unsafe.
-
-                    # Fallback Re-check:
-                    # If we have a link, we can sometimes deduce patterns, but better to check internal elements
-                    # Look for data-image-index?
-
-                    # Let's trust the 'src' if it's http. if base64, we fallback to peace.jpg for now
-                    # UNLESS we can parse `data-ids` from the DOM.
-                    # In the provided debug HTML, I don't see `data-ids` on `.cl-search-result`.
-                    # But I see JSON-LD.
+                    # Fallback Re-check using JSON-LD
 
                     # --- JSON-LD Refinement ---
                     # We can try to look up this item in our json_results list by name match?
@@ -233,7 +224,7 @@ class PhonographScraper:
                                 if dt > now + timedelta(days=2):
                                     dt = dt.replace(year=now.year - 1)
                                 posted_date = dt.strftime("%Y-%m-%d")
-                            except:
+                            except Exception:
                                 pass
 
                     # AI Score
@@ -280,14 +271,13 @@ class PhonographScraper:
             await stealth_async(context)
 
             # Load previous leads to keep history (optional, but good for index.html)
-            # Actually, we usually append or merge. For now, let's keep old leads if valid.
             try:
                 with open("leads-v2.json", "r") as f:
                     existing = json.load(f)
                     for x in existing:
                         x["is_new"] = False
                     self.all_leads.extend(existing)
-            except:
+            except Exception:
                 pass
 
             for region, base_url in SEARCH_REGIONS.items():
@@ -297,12 +287,12 @@ class PhonographScraper:
                         random.uniform(1, 3)
                     )  # brief pause between searches
 
-            await browser.close()
+                # INCREMENTAL SAVE: Save after each region so data appears sooner
+                logger.info(f"Incremental save after {region}...")
+                self.save_leads()
+                self.save_seen_posts()
 
-            # Sort by date (newest first)
-            self.all_leads.sort(
-                key=lambda x: x.get("posted_date", "1970-01-01"), reverse=True
-            )
+            await browser.close()
 
             # De-duplicate just in case (by ID)
             unique_leads = {l["id"]: l for l in self.all_leads}.values()
