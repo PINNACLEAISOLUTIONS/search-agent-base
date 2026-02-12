@@ -1,410 +1,318 @@
-import json
-import csv
-import sys
 import asyncio
-import datetime
 import random
-
-# Fix Windows console encoding for emoji output (ignore mypy error for reconfigure)
-if sys.stdout.encoding != "utf-8":
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore
-
+import json
+import re
+import csv
+import logging
+import os
+from datetime import datetime, timedelta
+from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright
 from playwright_stealth import stealth_async
-from bs4 import BeautifulSoup
 from ai_lead_processor import AIAntiqueProcessor
-from models import Lead
 
-# --- CONFIGURATION ---
-REGIONS = {
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+SEARCH_REGIONS = {
     "Miami": "https://miami.craigslist.org",
+    "South Florida": "https://miami.craigslist.org",
+    "Broward": "https://fortlauderdale.craigslist.org",
+    "Palm Beach": "https://treasure.craigslist.org",
+    "Space Coast": "https://spacecoast.craigslist.org",
     "Tampa": "https://tampa.craigslist.org",
     "Orlando": "https://orlando.craigslist.org",
-    "Jacksonville": "https://jacksonville.craigslist.org",
-    "Tallahassee": "https://tallahassee.craigslist.org",
-    "Gainesville": "https://gainesville.craigslist.org",
     "Sarasota": "https://sarasota.craigslist.org",
     "Fort Myers": "https://fortmyers.craigslist.org",
+    "Naples": "https://fortmyers.craigslist.org",
+    "Keys": "https://keys.craigslist.org",
+    "Treasure Coast": "https://treasure.craigslist.org",
+    "Gold Coast": "https://miami.craigslist.org",
     "Daytona": "https://daytona.craigslist.org",
+    "St. Augustine": "https://staugustine.craigslist.org",
     "Lakeland": "https://lakeland.craigslist.org",
     "Ocala": "https://ocala.craigslist.org",
-    "Treasure Coast": "https://treasure.craigslist.org",
-    "Space Coast": "https://spacecoast.craigslist.org",
-    "St. Augustine": "https://staugustine.craigslist.org",
-    "Pensacola": "https://pensacola.craigslist.org",
-    "Panama City": "https://panamacity.craigslist.org",
-    "Keys": "https://keys.craigslist.org",
-    "Naples": "https://naples.craigslist.org",
-    "Heartland": "https://cfl.craigslist.org",
-    "Lake City": "https://lakecity.craigslist.org",
-    "Atlanta": "https://atlanta.craigslist.org",
+    "Gainesville": "https://gainesville.craigslist.org",
 }
 
-SEARCH_KEYWORDS = [
+KEYWORDS = [
     "victrola",
     "phonograph",
     "gramophone",
-    "edison",
-    "columbia grafonola",
-    "victor talking machine",
+    "talking machine",
     "antique record player",
-    "crank player",
-    "brunswick phonograph",
-    "sonora phonograph",
-    "pathé",
-    "amberola",
-    "cylinder player",
+    "edison phonograph",
+    "columbia grafonola",
 ]
 
-# Output files
-LEADS_JSON = "leads.json"
-LEADS_V2_JSON = "leads-v2.json"
-LEADS_CSV = "leads.csv"
-SEEN_POSTS_FILE = "seen_posts.json"
 
-ai_processor = AIAntiqueProcessor()
+class PhonographScraper:
+    def __init__(self):
+        self.ai_processor = AIAntiqueProcessor()
+        self.seen_posts = self.load_seen_posts()
+        self.all_leads = []
 
-# In-memory store during this run
-all_leads: list[dict] = []
+    def load_seen_posts(self):
+        try:
+            with open("seen_posts.json", "r") as f:
+                return set(json.load(f))
+        except FileNotFoundError:
+            return set()
 
+    def save_seen_posts(self):
+        with open("seen_posts.json", "w") as f:
+            json.dump(list(self.seen_posts), f)
 
-def load_seen_posts():
-    """Load previously seen post IDs to avoid duplicates."""
-    try:
-        with open(SEEN_POSTS_FILE, "r") as f:
-            return set(json.load(f))
-    except (FileNotFoundError, json.JSONDecodeError):
-        return set()
+    def save_leads(self):
+        # JSON-V2 (Frontend)
+        with open("leads-v2.json", "w") as f:
+            json.dump(self.all_leads, f, indent=2)
 
+        # Legacy JSON (Backup)
+        with open("leads.json", "w") as f:
+            json.dump(self.all_leads, f, indent=2)
 
-def save_seen_posts(seen):
-    """Save seen post IDs."""
-    with open(SEEN_POSTS_FILE, "w") as f:
-        json.dump(list(seen), f)
-
-
-def load_existing_leads():
-    """Load existing leads so we accumulate over time."""
-    try:
-        with open(LEADS_JSON, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            if isinstance(data, list):
-                return data
-    except (FileNotFoundError, json.JSONDecodeError):
-        pass
-    return []
-
-
-def save_all_leads(leads):
-    """Save leads to all output files (JSON + CSV)."""
-    # Sort by posted_date desc (newest first), then score desc
-    # Handle missing posted_date by treating as 'oldest' or 'newest' depending on pref.
-    # Here we treat empty dates as old.
-    leads.sort(
-        key=lambda x: (x.get("posted_date", "") or "0000", x.get("score", 0)),
-        reverse=True,
-    )
-
-    # Save leads.json
-    with open(LEADS_JSON, "w", encoding="utf-8") as f:
-        json.dump(leads, f, indent=4)
-
-    # Save leads-v2.json (same data, consumed by index.html)
-    with open(LEADS_V2_JSON, "w", encoding="utf-8") as f:
-        json.dump(leads, f, indent=4)
-
-    # Save leads.csv
-    if leads:
-        fieldnames = [
-            "id",
-            "title",
-            "link",
-            "region",
-            "keyword",
-            "score",
-            "classification",
-            "timestamp",
-            "is_new",
-        ]
-        with open(LEADS_CSV, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
+        # CSV (Analysis)
+        keys = (
+            self.all_leads[0].keys()
+            if self.all_leads
+            else ["id", "title", "price", "region", "score", "classification", "link"]
+        )
+        with open("leads.csv", "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=keys)
             writer.writeheader()
-            writer.writerows(leads)
+            writer.writerows(self.all_leads)
 
-    print(f"💾 Saved {len(leads)} leads to {LEADS_JSON}, {LEADS_V2_JSON}, {LEADS_CSV}")
+        # Metadata
+        with open("metadata.json", "w") as f:
+            json.dump(
+                {
+                    "last_updated": datetime.now().isoformat(),
+                    "total_leads": len(self.all_leads),
+                    "new_leads_this_run": len(
+                        [l for l in self.all_leads if l.get("is_new", False)]
+                    ),
+                },
+                f,
+            )
 
+    async def scrape_region(self, context, region_name, base_url, keyword):
+        logger.info(f"Scraping {region_name} for '{keyword}'...")
+        search_url = f"{base_url}/search/atq?query={keyword}"
 
-async def scrape_region(context, region_name, base_url, keyword, seen_posts):
-    """Scrape a single region+keyword combo. Returns list of new leads found."""
-    search_url = f"{base_url}/search/atq?query={keyword}"
-    new_leads = []
-    page = None
-
-    try:
         page = await context.new_page()
-        await stealth_async(page)
-        await page.goto(search_url, wait_until="domcontentloaded", timeout=45000)
-        # Human-like delay
-        await asyncio.sleep(random.uniform(2, 5))
+        try:
+            await page.goto(search_url, wait_until="domcontentloaded", timeout=60000)
+            await asyncio.sleep(random.uniform(2, 5))
 
-        content = await page.content()
-        soup = BeautifulSoup(content, "html.parser")
-
-        # Craigslist 2026 uses .cl-search-result divs
-        results = soup.select(".cl-search-result") or soup.select(".result-row")
-        print(f"    Found {len(results)} raw results for {region_name}")
-
-        for res in results:
+            # Wait a bit for potential JS hydration
             try:
-                # --- TITLE ---
-                # Primary: span.label inside a.posting-title
-                title_elem = res.select_one("a.posting-title span.label")
-                # Fallback 1: the div's title attribute
-                if not title_elem:
-                    title = res.get("title", "").strip()
-                else:
-                    title = title_elem.get_text().strip()
-                # Fallback 2: old .titlestring selector
-                if not title:
-                    old_title = res.select_one(".titlestring") or res.select_one(
-                        ".result-title"
-                    )
-                    if old_title:
-                        title = old_title.get_text().strip()
-                if not title:
-                    continue
+                await page.wait_for_selector(".cl-search-result", timeout=5000)
+            except:
+                pass
 
-                # --- LINK ---
-                link_elem = (
-                    res.select_one("a.posting-title")
-                    or res.select_one("a.main")
-                    or res.select_one("a")
-                )
-                if not link_elem:
-                    continue
-                link = link_elem.get("href", "")
-                if not link:
-                    continue
-                if not link.startswith("http"):
-                    link = base_url + link
+            content = await page.content()
+            soup = BeautifulSoup(content, "html.parser")
 
-                post_id = link.split("/")[-1].split(".")[0]
+            # --- STRATEGY 1: JSON-LD (Structured Data) ---
+            # Craigslist often puts clean data in a script tag
+            ld_script = soup.select_one("#ld_searchpage_results")
+            json_results = []
+            if ld_script:
+                try:
+                    data = json.loads(ld_script.text)
+                    if "itemListElement" in data:
+                        json_results = data["itemListElement"]
+                        logger.info(f"  Found {len(json_results)} JSON-LD items")
+                except Exception as e:
+                    logger.error(f"JSON-LD parse error: {e}")
 
-                # Skip if we've seen this before - REMOVED to allow updating timestamp
-                # if post_id in seen_posts:
-                #    continue
+            # --- STRATEGY 2: DOM Parsing (Fallback/Enrichment) ---
+            dom_results = soup.select(".cl-search-result")
+            logger.info(f"  Found {len(dom_results)} DOM items")
 
-                # --- PRICE (optional) ---
-                price_elem = res.select_one("span.priceinfo")
-                price = price_elem.get_text().strip() if price_elem else ""
+            # We iterate DOM results as primary because JSON-LD often lacks the full link
+            # But we can try to map them or just use DOM with better selectors
 
-                # --- IMAGE (Enhancement) ---
-                image_url = ""
-                img_elem = res.select_one("img")
-                if img_elem:
-                    tmp_url = img_elem.get("src", "")
-                    # Ignore tiny base64 placeholders
-                    if tmp_url and not tmp_url.startswith("data:image"):
-                        image_url = tmp_url
+            for res in dom_results:
+                try:
+                    # Title & Link
+                    title_elem = res.select_one("a.posting-title")
+                    if not title_elem:
+                        continue
 
-                # Fallback: data-ids attribute (common in CL gallery view)
-                if not image_url and res.has_attr("data-ids"):
-                    # data-ids="1:00K0K_keZxtGWi5Z4,1:00..."
-                    data_ids = res["data-ids"].split(",")
-                    if data_ids:
-                        # format: 1:ID -> https://images.craigslist.org/{ID}_300x300.jpg
-                        first_id = (
-                            data_ids[0].split(":")[1]
-                            if ":" in data_ids[0]
-                            else data_ids[0]
-                        )
-                        image_url = (
-                            f"https://images.craigslist.org/{first_id}_300x300.jpg"
-                        )
+                    title = title_elem.get_text(strip=True)
+                    link = title_elem.get("href")
+                    if not link.startswith("http"):
+                        link = base_url + link
 
-                # --- DATE: Try multiple Craigslist selectors ---
-                posted_date = ""
-                date_selectors = [
-                    "time.result-date",  # Classic CL layout
-                    "time.posted-date",  # Alternative CL layout
-                    ".meta time",  # Gallery/grid layout
-                    "time[datetime]",  # Any time element with datetime
-                    ".result-date",  # Span variant
-                ]
-                for sel in date_selectors:
-                    date_elem = res.select_one(sel)
-                    if date_elem:
-                        posted_date = (
-                            date_elem.get("datetime", "")
-                            or date_elem.get("title", "")
-                            or date_elem.get_text(strip=True)
-                        )
-                        if posted_date:
+                    # ID
+                    post_id = res.get("data-pid")
+                    if not post_id:
+                        # try from link
+                        match = re.search(r"/(\d+)\.html", link)
+                        if match:
+                            post_id = match.group(1)
+
+                    if not post_id or post_id in self.seen_posts:
+                        continue
+
+                    # Price
+                    price_elem = res.select_one(".priceinfo")
+                    price = price_elem.get_text(strip=True) if price_elem else "N/A"
+
+                    # Image - Advanced Logic
+                    image_url = "https://www.craigslist.org/images/peace.jpg"
+
+                    # Method A: High-res from swipe-wrap attributes or img src
+                    # CL often puts ids in data-ids="1:IMAGE_ID,1:IMAGE_ID_2"
+                    # URL format: https://images.craigslist.org/{IMAGE_ID}_600x450.jpg
+
+                    # Check for gallery card data
+                    gallery_card = res.select_one(".gallery-card")
+                    if gallery_card:
+                        # Try finding image in swiper
+                        img_tag = gallery_card.select_one("img")
+                        if img_tag and img_tag.get("src"):
+                            src = img_tag["src"]
+                            if "images.craigslist.org" in src:
+                                image_url = src
+                            elif src.startswith("data:"):
+                                # If it's a placeholder, ignore unless we find nothing better
+                                pass
+
+                    # Method B: data-ids attribute (Most reliable for gallery view)
+                    # Often on the result-row or a child
+                    # In new CL, it might be deep in the structure or logic
+                    # Let's inspect the HTML we saw earlier: <div data-pid="..." class="cl-search-result ...">
+
+                    # It seems CL 2026 uses `data-ids` less in the top div and more standard img src
+                    # But the img src was base64 in my debug.
+                    # WAIT! The JSON-LD had images!
+                    # Let's try to match JSON-LD item by position if possible? No, unsafe.
+
+                    # Fallback Re-check:
+                    # If we have a link, we can sometimes deduce patterns, but better to check internal elements
+                    # Look for data-image-index?
+
+                    # Let's trust the 'src' if it's http. if base64, we fallback to peace.jpg for now
+                    # UNLESS we can parse `data-ids` from the DOM.
+                    # In the provided debug HTML, I don't see `data-ids` on `.cl-search-result`.
+                    # But I see JSON-LD.
+
+                    # --- JSON-LD Refinement ---
+                    # We can try to look up this item in our json_results list by name match?
+                    # It's fuzzy but better than broken images.
+                    for j_item in json_results:
+                        j_product = j_item.get("item", {})
+                        if j_product.get("name") == title:
+                            # Match found!
+                            images = j_product.get("image", [])
+                            if isinstance(images, list) and len(images) > 0:
+                                image_url = images[0]
+                            elif isinstance(images, str):
+                                image_url = images
                             break
 
-                # If no date from search result, fallback to scrape time
-                if not posted_date:
-                    posted_date = datetime.datetime.now().isoformat()
+                    # Posted Date
+                    # Format in .meta div is "2/10" text node
+                    posted_date = datetime.now().strftime("%Y-%m-%d")
+                    meta_div = res.select_one(".meta")
+                    if meta_div:
+                        meta_text = meta_div.get_text()  # e.g. "2/10\nBOCA RATON"
+                        date_match = re.search(r"(\d{1,2}/\d{1,2})", meta_text)
+                        if date_match:
+                            m_d = date_match.group(1)
+                            # Assume current year, handle rolling
+                            now = datetime.now()
+                            try:
+                                dt = datetime.strptime(f"{m_d}/{now.year}", "%m/%d/%Y")
+                                if dt > now + timedelta(days=2):
+                                    dt = dt.replace(year=now.year - 1)
+                                posted_date = dt.strftime("%Y-%m-%d")
+                            except:
+                                pass
 
-                # AI Analysis
-                analysis = ai_processor.score_lead(title)
+                    # AI Score
+                    analysis = self.ai_processor.score_lead(title)
 
-                # Create Lead using Pydantic Model (Validation)
-                try:
-                    lead_obj = Lead(
-                        id=post_id,
-                        title=title,
-                        link=link,
-                        region=region_name,
-                        keyword=keyword,
-                        score=analysis["score"],
-                        classification=analysis["classification"],
-                        price=price,
-                        image=image_url,
-                        timestamp=datetime.datetime.now().isoformat(),  # Scrape time
-                        posted_date=posted_date,  # Original post time
-                        is_new=True,
-                    )
+                    lead = {
+                        "id": post_id,
+                        "title": title,
+                        "link": link,
+                        "price": price,
+                        "region": region_name,
+                        "score": analysis["score"],
+                        "classification": analysis["classification"],
+                        "analysis": analysis["analysis"],
+                        "image": image_url,
+                        "posted_date": posted_date,
+                        "scraped_at": datetime.now().isoformat(),
+                        "is_new": True,
+                    }
 
-                    # Convert back to dict for storage compatibility
-                    new_leads.append(lead_obj.model_dump())
-                    seen_posts.add(post_id)
+                    if analysis["score"] >= 0:
+                        self.all_leads.append(lead)
+                        self.seen_posts.add(post_id)
+                        logger.info(f"  + Saved: {title} ({price})")
 
-                    tag = "GOLD" if analysis["score"] >= 4.0 else "MATCH"
-                    price_str = f" {price}" if price else ""
-                    print(
-                        f"    {tag} [{region_name}] {title}{price_str} (Date: {posted_date})"
-                    )
-                except Exception as val_err:
-                    print(f"    Data Validation Failed: {val_err}")
+                except Exception as e:
+                    logger.error(f"  Error processing item: {e}")
                     continue
 
-            except Exception:
-                continue
+        except Exception as e:
+            logger.error(f"Error scraping region {region_name}: {e}")
+        finally:
+            await page.close()
 
-    except Exception as e:
-        print(f"  Failed {region_name}/{keyword}: {e}")
-    finally:
-        if page:
-            try:
-                await page.close()
-            except Exception:
-                pass
-
-    return new_leads
-
-
-async def main():
-    print(f"{'=' * 60}")
-    print(
-        f"  OLDTIMECRANK SCRAPER — {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}"
-    )
-    print(f"  Regions: {len(REGIONS)} | Keywords: {len(SEARCH_KEYWORDS)}")
-    print(f"{'=' * 60}")
-
-    # Load state
-    seen_posts = load_seen_posts()
-    existing_leads = load_existing_leads()
-    # Mark old leads as not new
-    for lead in existing_leads:
-        lead["is_new"] = False
-
-    print(
-        f"📂 Loaded {len(existing_leads)} existing leads, {len(seen_posts)} seen posts"
-    )
-
-    new_leads = []
-
-    try:
+    async def run(self):
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
+            # Use a high-quality stealth context
             context = await browser.new_context(
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+                viewport={"width": 1920, "height": 1080},
+                locale="en-US",
             )
+            await stealth_async(context)
 
-            # Using a semaphore to limit concurrency (avoid getting blocked)
-            sem = asyncio.Semaphore(3)
-
-            async def controlled_scrape(r_name, r_url, kw):
-                async with sem:
-                    return await scrape_region(context, r_name, r_url, kw, seen_posts)
-
-            # Shuffle regions to avoid predictable patterns
-            items = list(REGIONS.items())
-            random.shuffle(items)
-
-            tasks = []
-            for region_name, url in items:
-                for keyword in SEARCH_KEYWORDS:
-                    tasks.append(controlled_scrape(region_name, url, keyword))
-
-            # Run all tasks, ignore failures so we keep what we got
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-
-            for batch in results:
-                if isinstance(batch, list):
-                    new_leads.extend(batch)
-                else:
-                    print(f"  Create Task Error: {batch}")
-
+            # Load previous leads to keep history (optional, but good for index.html)
+            # Actually, we usually append or merge. For now, let's keep old leads if valid.
             try:
-                await browser.close()
-            except Exception:
+                with open("leads-v2.json", "r") as f:
+                    existing = json.load(f)
+                    for x in existing:
+                        x["is_new"] = False
+                    self.all_leads.extend(existing)
+            except:
                 pass
-    except Exception as e:
-        print(f"CRITICAL PLAYWRIGHT ERROR: {e}")
-        # Continue to save whatever we found
 
-    # Merge new leads into existing
-    # Improved Deduplication: Check ID OR (Title + Price + Keyword match) to filter cross-posts
-    # We use a dictionary for O(1) lookups by ID
-    existing_leads_map = {entry["id"]: entry for entry in existing_leads}
+            for region, base_url in SEARCH_REGIONS.items():
+                for keyword in KEYWORDS:
+                    await self.scrape_region(context, region, base_url, keyword)
+                    await asyncio.sleep(
+                        random.uniform(1, 3)
+                    )  # brief pause between searches
 
-    unique_new_leads_count = 0
-    updated_leads_count = 0
+            await browser.close()
 
-    for lead in new_leads:
-        lead_id = lead["id"]
-
-        if lead_id in existing_leads_map:
-            # Update existing lead
-            existing_rec = existing_leads_map[lead_id]
-            existing_rec["timestamp"] = lead["timestamp"]  # Update seen time
-            existing_rec["price"] = lead["price"]  # Update price if changed
-            existing_rec["is_new"] = False  # It's not "new" new, just updated
-            updated_leads_count += 1
-        else:
-            # New lead
-            existing_leads.append(lead)
-            existing_leads_map[lead_id] = (
-                lead  # Update map to prevent dupes in same run
+            # Sort by date (newest first)
+            self.all_leads.sort(
+                key=lambda x: x.get("posted_date", "1970-01-01"), reverse=True
             )
-            unique_new_leads_count += 1
 
-    # Re-sort by timestamp descending to ensure newest checks are top
-    existing_leads.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+            # De-duplicate just in case (by ID)
+            unique_leads = {l["id"]: l for l in self.all_leads}.values()
+            self.all_leads = list(unique_leads)
 
-    # Save everything
-    save_all_leads(existing_leads)
-    save_seen_posts(seen_posts)
-
-    # Save Metadata for Frontend Status
-    meta = {
-        "last_updated": datetime.datetime.now().isoformat(),
-        "total_leads": len(existing_leads),
-        "new_leads_this_run": unique_new_leads_count,
-    }
-    with open("metadata.json", "w") as f:
-        json.dump(meta, f)
-
-    print(f"\n{'=' * 60}")
-    print("Scrape Complete.")
-    print(f"Found {len(new_leads)} raw leads.")
-    print(f"Added {unique_new_leads_count} new leads.")
-    print(f"Updated {updated_leads_count} existing leads (timestamp refresh).")
-    print(f"Total leads in DB: {len(existing_leads)}")
-    print("=====================")
+            self.save_leads()
+            self.save_seen_posts()
+            logger.info("Scraping completed!")
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    scraper = PhonographScraper()
+    asyncio.run(scraper.run())
