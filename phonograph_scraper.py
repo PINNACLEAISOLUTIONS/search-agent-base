@@ -263,7 +263,7 @@ class PhonographScraper:
                                 # Try parsing as ISO
                                 dt = datetime.fromisoformat(p_date)
                                 x["posted_date"] = dt.strftime("%Y-%m-%d")
-                            except:
+                            except ValueError:
                                 # Simple truncation fallback
                                 x["posted_date"] = p_date[:10]
                         elif not p_date:
@@ -276,7 +276,10 @@ class PhonographScraper:
             # Aggressive Date Check
             for x in self.all_leads:
                 pd = x.get("posted_date", "")
-                if not pd or len(pd) != 10 or not pd.startswith("20"):
+                if pd and len(pd) >= 10 and pd.startswith("20"):
+                    # Truncate to YYYY-MM-DD
+                    x["posted_date"] = pd[:10]
+                else:
                     x["posted_date"] = "1970-01-01"
 
             for region, base_url in SEARCH_REGIONS.items():
