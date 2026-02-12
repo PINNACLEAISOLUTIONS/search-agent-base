@@ -190,7 +190,7 @@ class PhonographScraper:
                             break
 
                     # Posted Date Logic
-                    posted_date = datetime.now().strftime("%Y-%m-%d")
+                    posted_date = "1970-01-01"  # Default to old if parse fails
                     meta_div = res.select_one(".meta")
                     if meta_div:
                         meta_text = meta_div.get_text()  # e.g. "2/10\nBOCA RATON"
