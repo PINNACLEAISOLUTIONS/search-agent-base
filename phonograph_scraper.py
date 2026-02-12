@@ -122,6 +122,13 @@ class PhonographScraper:
             content = await page.content()
             soup = BeautifulSoup(content, "html.parser")
 
+            # DEBUG: Check if blocked
+            page_title = await page.title()
+            if "blocked" in page_title.lower() or len(content) < 1000:
+                logger.error(
+                    f"  Possible block! Title: {page_title}, Content Len: {len(content)}"
+                )
+
             # --- STRATEGY 1: JSON-LD (Structured Data) ---
             ld_script = soup.select_one("#ld_searchpage_results")
             json_results = []
@@ -134,9 +141,13 @@ class PhonographScraper:
                 except Exception as e:
                     logger.error(f"JSON-LD parse error: {e}")
 
-            # --- STRATEGY 2: DOM Parsing (Fallback/Enrichment) ---
             dom_results = soup.select(".cl-search-result")
             logger.info(f"  Found {len(dom_results)} DOM items")
+
+            if len(dom_results) == 0:
+                logger.error("  0 DOM items found! Dumping HTML...")
+                with open("debug.html", "w", encoding="utf-8") as f:
+                    f.write(soup.prettify())
 
             for res in dom_results:
                 try:
@@ -189,22 +200,33 @@ class PhonographScraper:
                                 image_url = images
                             break
 
-                    # Posted Date Logic
-                    posted_date = "1970-01-01"  # Default to old if parse fails
-                    meta_div = res.select_one(".meta")
-                    if meta_div:
-                        meta_text = meta_div.get_text()  # e.g. "2/10\nBOCA RATON"
-                        date_match = re.search(r"(\d{1,2}/\d{1,2})", meta_text)
-                        if date_match:
-                            m_d = date_match.group(1)
-                            now = datetime.now()
-                            try:
-                                dt = datetime.strptime(f"{m_d}/{now.year}", "%m/%d/%Y")
-                                if dt > now + timedelta(days=2):
-                                    dt = dt.replace(year=now.year - 1)
-                                posted_date = dt.strftime("%Y-%m-%d")
-                            except ValueError:
-                                pass
+                    # Posted Date Logic (Targeting datetime attribute)
+                    posted_date = "1970-01-01"
+                    time_elem = res.select_one("time.date.timeago")
+                    if time_elem and time_elem.has_attr("datetime"):
+                        # Format: 2026-02-11 17:15
+                        raw_date = time_elem["datetime"]
+                        if raw_date:
+                            # Keep just YYYY-MM-DD
+                            posted_date = raw_date.split(" ")[0]
+                    else:
+                        # Fallback to meta text if time tag missing
+                        meta_div = res.select_one(".meta")
+                        if meta_div:
+                            meta_text = meta_div.get_text()
+                            date_match = re.search(r"(\d{1,2}/\d{1,2})", meta_text)
+                            if date_match:
+                                m_d = date_match.group(1)
+                                now = datetime.now()
+                                try:
+                                    dt = datetime.strptime(
+                                        f"{m_d}/{now.year}", "%m/%d/%Y"
+                                    )
+                                    if dt > now + timedelta(days=2):
+                                        dt = dt.replace(year=now.year - 1)
+                                    posted_date = dt.strftime("%Y-%m-%d")
+                                except ValueError:
+                                    pass
 
                     # AI Score
                     analysis = self.ai_processor.score_lead(title)
@@ -240,11 +262,30 @@ class PhonographScraper:
 
     async def run(self):
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
+            browser = await p.chromium.launch(
+                headless=True,
+                args=[
+                    "--disable-blink-features=AutomationControlled",
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-infobars",
+                    "--window-position=0,0",
+                    "--ignore-certifcate-errors",
+                    "--ignore-certifcate-errors-spki-list",
+                    "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+                ],
+            )
             context = await browser.new_context(
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
                 viewport={"width": 1920, "height": 1080},
                 locale="en-US",
+                timezone_id="America/New_York",
+                permissions=["geolocation"],
+                geolocation={"latitude": 25.7617, "longitude": -80.1918},  # Miami
+            )
+
+            # Remove webdriver property
+            await context.add_init_script(
+                "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
             )
             await stealth_async(context)
 

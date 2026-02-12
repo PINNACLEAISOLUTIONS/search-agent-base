@@ -1,53 +1,37 @@
-name: OldTimeCrank Scraper + Deploy
+name: Antigravity Scraper
 
 on:
   schedule:
-    # Run every 6 hours
-    - cron: "0 */6 * * *"
-  workflow_dispatch:
-  push:
-    branches:
-      - main
-
-permissions:
-  contents: write
+    - cron: "0 */6 * * *" # Every 6 hours
+  workflow_dispatch: # Allow manual trigger
 
 jobs:
-  scrape-and-deploy:
+  scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-
+    permissions:
+      contents: write
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: "3.10"
 
       - name: Install dependencies
         run: |
-          pip install playwright beautifulsoup4 pandas playwright-stealth pydantic
+          python -m pip install --upgrade pip
+          pip install requests beautifulsoup4 pandas playwright playwright-stealth
           playwright install chromium
-          playwright install-deps
 
-      - name: Run scraper
+      - name: Run Scraper
         run: python phonograph_scraper.py
 
-      - name: Commit updated leads data
+      - name: Commit and Push
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add leads.json leads-v2.json leads.csv seen_posts.json metadata.json
-          git commit -m "🤖 Auto-update leads $(date -u +'%Y-%m-%d %H:%M UTC')" || echo "No changes to commit"
-          git push origin main || echo "Failed to push to GitHub, continuing to deploy"
-
-      - name: Install Netlify CLI
-        run: npm install -g netlify-cli
-
-      - name: Deploy to Netlify
-        env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID || 'b701cda9-81ae-46f1-9a24-9d09740aa65a' }}
-        run: netlify deploy --prod --dir=. --site=$NETLIFY_SITE_ID
+          git config --global user.name "AntigravityBot"
+          git config --global user.email "bot@antigravity.action"
+          git add leads-v2.json leads.json leads.csv metadata.json seen_posts.json
+          git commit -m "Auto-update: $(date -u)" || exit 0
+          git push

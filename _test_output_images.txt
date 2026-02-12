@@ -1,0 +1,22 @@
+============================================================
+  OLDTIMECRANK SCRAPER ΓÇö 2026-02-10 20:16
+  Regions: 20 | Keywords: 13
+============================================================
+≡ƒôé Loaded 41 existing leads, 41 seen posts
+    Γ£à [Lakeland] Victrola VTA 7541B vintage style $50 (Score: 3.0)
+    ≡ƒÑç GOLD [Lakeland] VICTOR TALKING MACHNE VICTROLA $100 (Score: 4.0)
+    Γ£à [Lakeland] EDISON HOME PHONOGRAPH IN EXCELLENT $405 (Score: 2.5)
+    Γ£à [Lakeland] EDISON 4MIN CYLINDER PHONOGRAPH RECORDS $6 (Score: 3.0)
+    Γ£à [Lakeland] RARE GERMAN 78rpm "MAGNET" GRAPHOPHONE/PHONOGRAPH $225 (Score: 3.0)
+    Γ£à [Lakeland] EDISON MAROON GEM MODEL D PHONOGRAPH $900 (Score: 2.5)
+    Γ£à [Lakeland] VERY NICE EDISON GEM MODEL B PHONOGRAPH $575 (Score: 2.5)
+    Γ£à [Lakeland] ANTIQUE COLUMBIA GRAFONOLA $950 (Score: 3.0)
+    Γ£à [Lakeland] Antique Farmhouse Table $200 (Score: 1.5)
+    Γ£à [Lakeland] Antique Bar Cabinet $400 (Score: 1.5)
+    Γ£à [Lakeland] Vintage Record Player $300 (Score: 1.5)
+    Γ£à [Lakeland] VICTOR URDANETA WATERCOLOR ACUARELA VENEZUELA " PAISAJE ANDINO " $175 (Score: 2.5)
+≡ƒÆ╛ Saved 53 leads to leads.json, leads-v2.json, leads.csv
+
+============================================================
+  DONE ΓÇö 12 new leads found, 53 total
+============================================================

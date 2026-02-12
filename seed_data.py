@@ -1,5 +1,5 @@
 # Targeted sweep script to get immediate data
-import os
+
 import json
 import datetime
 import asyncio
@@ -67,7 +67,7 @@ async def scrape():
                                 }
                             )
                             print(f"  Found: {title}")
-                        except:
+                        except Exception:
                             continue
                 except Exception as e:
                     print(f"Skipping {region}: {e}")

@@ -1,0 +1,19 @@
+============================================================
+  OLDTIMECRANK SCRAPER ΓÇö 2026-02-10 21:15
+  Regions: 20 | Keywords: 13
+============================================================
+≡ƒôé Loaded 50 existing leads, 55 seen posts
+    Γ£à [Tallahassee] Phonograph $100 (Date: 2026-02-10 21:16)
+    Γ£à [Tallahassee] Desk Lamp from a Kenmore Fan from the 50ΓÇÖs or 60ΓÇÖs Painted red , new twisted $115 (Date: 2026-02-10 21:16)
+    Γ£à [Tallahassee] Victor talking machine $200 (Date: 2026-02-10 21:16)
+    Γ£à [Tallahassee] Moving sale antique furniture $50 to up$$$record player boombox amp $100 (Date: 2026-02-10 21:16)
+    Γ£à [Tallahassee] Moving sale antique furniture $50 to up$$$record player boombox amp $100 (Date: 2026-02-10 21:16)
+    Γ£à [Tallahassee] Antique Zenith Radio Console w/record player $375 (Date: 2026-02-10 21:16)
+≡ƒÆ╛ Saved 55 leads to leads.json, leads-v2.json, leads.csv
+
+============================================================
+Γ£à Scrape Complete.
+≡ƒåò Found 6 raw leads.
+Γ£¿ Added 5 unique leads (after deduplication).
+≡ƒÆ╛ Total leads in DB: 55
+=====================

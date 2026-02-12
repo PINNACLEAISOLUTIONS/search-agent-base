@@ -34,7 +34,7 @@ def run_pro_antique_search():
 
     for lead in sim_findings:
         analysis = processor.score_lead(lead["title"])
-        print(f"\nPotential Machine Found:")
+        print("\nPotential Machine Found:")
         print(f"Title: {lead['title']}")
         print(f"URL: {lead['url']}")
         print(f"AI Score: {analysis['score']} - {analysis['classification']}")

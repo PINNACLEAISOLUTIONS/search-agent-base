@@ -1,0 +1,14 @@
+============================================================
+  OLDTIMECRANK SCRAPER ΓÇö 2026-02-10 20:45
+  Regions: 20 | Keywords: 13
+============================================================
+≡ƒôé Loaded 49 existing leads, 54 seen posts
+    Γ£à [Sarasota] VICTOR URDANETA WATERCOLOR ACUARELA VENEZUELA " PAISAJE ANDINO " $175 (Score: 2.5)
+≡ƒÆ╛ Saved 50 leads to leads.json, leads-v2.json, leads.csv
+
+============================================================
+Γ£à Scrape Complete.
+≡ƒåò Found 1 raw leads.
+Γ£¿ Added 1 unique leads (after deduplication).
+≡ƒÆ╛ Total leads in DB: 50
+=====================
