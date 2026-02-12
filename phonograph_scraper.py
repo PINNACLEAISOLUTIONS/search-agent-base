@@ -67,6 +67,7 @@ class PhonographScraper:
 
     def save_leads(self):
         # Sort by date (newest first) before saving
+        # Ensure we are sorting by YYYY-MM-DD string comparison
         self.all_leads.sort(
             key=lambda x: x.get("posted_date", "1970-01-01"), reverse=True
         )
@@ -122,7 +123,6 @@ class PhonographScraper:
             soup = BeautifulSoup(content, "html.parser")
 
             # --- STRATEGY 1: JSON-LD (Structured Data) ---
-            # Craigslist often puts clean data in a script tag
             ld_script = soup.select_one("#ld_searchpage_results")
             json_results = []
             if ld_script:
@@ -137,9 +137,6 @@ class PhonographScraper:
             # --- STRATEGY 2: DOM Parsing (Fallback/Enrichment) ---
             dom_results = soup.select(".cl-search-result")
             logger.info(f"  Found {len(dom_results)} DOM items")
-
-            # We iterate DOM results as primary because JSON-LD often lacks the full link
-            # But we can try to map them or just use DOM with better selectors
 
             for res in dom_results:
                 try:
@@ -156,7 +153,6 @@ class PhonographScraper:
                     # ID
                     post_id = res.get("data-pid")
                     if not post_id:
-                        # try from link
                         match = re.search(r"/(\d+)\.html", link)
                         if match:
                             post_id = match.group(1)
@@ -171,36 +167,21 @@ class PhonographScraper:
                     # Image - Advanced Logic
                     image_url = "https://www.craigslist.org/images/peace.jpg"
 
-                    # Method A: High-res from swipe-wrap attributes or img src
-                    # CL often puts ids in data-ids="1:IMAGE_ID,1:IMAGE_ID_2"
-                    # URL format: https://images.craigslist.org/{IMAGE_ID}_600x450.jpg
-
-                    # Check for gallery card data
+                    # Gallery check
                     gallery_card = res.select_one(".gallery-card")
                     if gallery_card:
-                        # Try finding image in swiper
                         img_tag = gallery_card.select_one("img")
                         if img_tag and img_tag.get("src"):
                             src = img_tag["src"]
                             if "images.craigslist.org" in src:
                                 image_url = src
                             elif src.startswith("data:"):
-                                # If it's a placeholder, ignore unless we find nothing better
                                 pass
 
-                    # Method B: data-ids attribute (Most reliable for gallery view)
-                    # Often on the result-row or a child
-                    # In new CL, it might be deep in the structure or logic
-
-                    # Fallback Re-check using JSON-LD
-
-                    # --- JSON-LD Refinement ---
-                    # We can try to look up this item in our json_results list by name match?
-                    # It's fuzzy but better than broken images.
+                    # JSON-LD Reference for Image
                     for j_item in json_results:
                         j_product = j_item.get("item", {})
                         if j_product.get("name") == title:
-                            # Match found!
                             images = j_product.get("image", [])
                             if isinstance(images, list) and len(images) > 0:
                                 image_url = images[0]
@@ -208,8 +189,7 @@ class PhonographScraper:
                                 image_url = images
                             break
 
-                    # Posted Date
-                    # Format in .meta div is "2/10" text node
+                    # Posted Date Logic
                     posted_date = datetime.now().strftime("%Y-%m-%d")
                     meta_div = res.select_one(".meta")
                     if meta_div:
@@ -217,7 +197,6 @@ class PhonographScraper:
                         date_match = re.search(r"(\d{1,2}/\d{1,2})", meta_text)
                         if date_match:
                             m_d = date_match.group(1)
-                            # Assume current year, handle rolling
                             now = datetime.now()
                             try:
                                 dt = datetime.strptime(f"{m_d}/{now.year}", "%m/%d/%Y")
@@ -240,7 +219,7 @@ class PhonographScraper:
                         "classification": analysis["classification"],
                         "analysis": analysis["analysis"],
                         "image": image_url,
-                        "posted_date": posted_date,
+                        "posted_date": posted_date,  # Normalized YYYY-MM-DD
                         "scraped_at": datetime.now().isoformat(),
                         "is_new": True,
                     }
@@ -262,7 +241,6 @@ class PhonographScraper:
     async def run(self):
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
-            # Use a high-quality stealth context
             context = await browser.new_context(
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
                 viewport={"width": 1920, "height": 1080},
@@ -270,12 +248,27 @@ class PhonographScraper:
             )
             await stealth_async(context)
 
-            # Load previous leads to keep history (optional, but good for index.html)
+            # Load previous leads
             try:
                 with open("leads-v2.json", "r") as f:
                     existing = json.load(f)
                     for x in existing:
                         x["is_new"] = False
+
+                        # --- FIX: Normalize Dates ---
+                        # If date is a long ISO string, truncate it to YYYY-MM-DD
+                        p_date = x.get("posted_date", "")
+                        if p_date and len(p_date) > 10 and "T" in p_date:
+                            try:
+                                # Try parsing as ISO
+                                dt = datetime.fromisoformat(p_date)
+                                x["posted_date"] = dt.strftime("%Y-%m-%d")
+                            except:
+                                # Simple truncation fallback
+                                x["posted_date"] = p_date[:10]
+                        elif not p_date:
+                            x["posted_date"] = "1970-01-01"
+
                     self.all_leads.extend(existing)
             except Exception:
                 pass
@@ -283,11 +276,9 @@ class PhonographScraper:
             for region, base_url in SEARCH_REGIONS.items():
                 for keyword in KEYWORDS:
                     await self.scrape_region(context, region, base_url, keyword)
-                    await asyncio.sleep(
-                        random.uniform(1, 3)
-                    )  # brief pause between searches
+                    await asyncio.sleep(random.uniform(1, 3))
 
-                # INCREMENTAL SAVE: Save after each region so data appears sooner
+                # INCREMENTAL SAVE
                 logger.info(f"Incremental save after {region}...")
                 self.save_leads()
                 self.save_seen_posts()
@@ -295,8 +286,8 @@ class PhonographScraper:
             await browser.close()
 
             # De-duplicate just in case (by ID)
-            unique_leads = {l["id"]: l for l in self.all_leads}.values()
-            self.all_leads = list(unique_leads)
+            unique_vals = {l["id"]: l for l in self.all_leads}.values()
+            self.all_leads = list(unique_vals)
 
             self.save_leads()
             self.save_seen_posts()
