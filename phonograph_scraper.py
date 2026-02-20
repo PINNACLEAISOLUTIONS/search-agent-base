@@ -141,7 +141,7 @@ class PhonographScraper:
                 except Exception as e:
                     logger.error(f"JSON-LD parse error: {e}")
 
-            dom_results = soup.select(".cl-search-result")
+            dom_results = soup.select(".cl-search-result, .cl-static-search-result")
             logger.info(f"  Found {len(dom_results)} DOM items")
 
             if len(dom_results) == 0:
@@ -152,12 +152,21 @@ class PhonographScraper:
             for res in dom_results:
                 try:
                     # Title & Link
+                    # Standard DOM uses <a class="posting-title">...</a>
+                    # Static DOM uses <a href="..."> <div class="title">...</div> </a>
                     title_elem = res.select_one("a.posting-title")
-                    if not title_elem:
-                        continue
+                    if title_elem:
+                        title = title_elem.get_text(strip=True)
+                        link = title_elem.get("href")
+                    else:
+                        a_tag = res.select_one("a")
+                        title_div = res.select_one("div.title")
+                        if a_tag and title_div:
+                            title = title_div.get_text(strip=True)
+                            link = a_tag.get("href")
+                        else:
+                            continue
 
-                    title = title_elem.get_text(strip=True)
-                    link = title_elem.get("href")
                     if not link.startswith("http"):
                         link = base_url + link
 
@@ -172,7 +181,7 @@ class PhonographScraper:
                         continue
 
                     # Price
-                    price_elem = res.select_one(".priceinfo")
+                    price_elem = res.select_one(".priceinfo, div.price")
                     price = price_elem.get_text(strip=True) if price_elem else "N/A"
 
                     # Image - Advanced Logic
@@ -228,6 +237,10 @@ class PhonographScraper:
                                 except ValueError:
                                     pass
 
+                    if posted_date == "1970-01-01":
+                        # If date is still missing (like in static HTML), use today's date
+                        posted_date = datetime.now().strftime("%Y-%m-%d")
+
                     # AI Score
                     analysis = self.ai_processor.score_lead(title)
 
@@ -254,6 +267,74 @@ class PhonographScraper:
                 except Exception as e:
                     logger.error(f"  Error processing item: {e}")
                     continue
+
+            # --- FALLBACK: Use JSON-LD if DOM failed ---
+            if len(dom_results) == 0 and len(json_results) > 0:
+                logger.info("  Falling back to JSON-LD processing...")
+                for item in json_results:
+                    try:
+                        product = item.get("item", {})
+                        title = product.get("name")
+                        if not title:
+                            continue
+
+                        link = product.get(
+                            "url", base_url
+                        )  # unlikely to be empty but safe fallback
+
+                        # ID extraction from URL
+                        post_id = None
+                        match = re.search(r"/(\d+)\.html", link)
+                        if match:
+                            post_id = match.group(1)
+
+                        if not post_id or post_id in self.seen_posts:
+                            continue
+
+                        # Price
+                        offers = product.get("offers", {})
+                        price = "N/A"
+                        if isinstance(offers, dict):
+                            p_val = offers.get("price")
+                            curr = offers.get("priceCurrency", "$")
+                            if p_val:
+                                price = f"${p_val}"
+
+                        # Image
+                        image_url = "https://www.craigslist.org/images/peace.jpg"
+                        images = product.get("image", [])
+                        if isinstance(images, list) and len(images) > 0:
+                            image_url = images[0]
+                        elif isinstance(images, str):
+                            image_url = images
+
+                        # AI Score (Reuse existing logic)
+                        analysis = self.ai_processor.score_lead(title)
+
+                        lead = {
+                            "id": post_id,
+                            "title": title,
+                            "link": link,
+                            "price": price,
+                            "region": region_name,
+                            "score": analysis["score"],
+                            "classification": analysis["classification"],
+                            "analysis": analysis["analysis"],
+                            "image": image_url,
+                            "posted_date": datetime.now().strftime(
+                                "%Y-%m-%d"
+                            ),  # JSON-LD usually lacks date, default to now for freshness
+                            "scraped_at": datetime.now().isoformat(),
+                            "is_new": True,
+                        }
+
+                        if analysis["score"] >= 0:
+                            self.all_leads.append(lead)
+                            self.seen_posts.add(post_id)
+                            logger.info(f"  + Saved (JSON-LD): {title} ({price})")
+
+                    except Exception as e:
+                        logger.error(f"  Error processing JSON-LD item: {e}")
 
         except Exception as e:
             logger.error(f"Error scraping region {region_name}: {e}")
