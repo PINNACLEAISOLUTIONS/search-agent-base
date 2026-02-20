@@ -1,6 +1,9 @@
 name: Antigravity Scraper
 
 on:
+  push:
+    branches:
+      - main
   schedule:
     - cron: "0 */6 * * *" # Every 6 hours
   workflow_dispatch: # Allow manual trigger
@@ -26,6 +29,8 @@ jobs:
           playwright install chromium
 
       - name: Run Scraper
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python phonograph_scraper.py
 
       - name: Commit and Push

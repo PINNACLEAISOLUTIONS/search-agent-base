@@ -13,11 +13,13 @@ The "Gold Standard" in lead discovery. This tool doesn't just scrape; it **think
 ### 1. Multi-Target Keywords
 
 We scan for high-value terms beyond just "landscaping":
+
 - `sod`, `pavers`, `tree removal`, `drainage`, `grading`, `yard cleanup`, `lawn care`.
 
 ### 2. AI Triage Engine
 
 Every post is piped through an AI Brain (`ai_lead_processor.py`) that:
+
 - **Scores Leads (1-5)**: 5 = Clear Homeowner intent, 1 = Spam or Pro Ad.
 - **Classifies Tiers**: Labels leads as **DIAMOND**, **POTENTIAL HOMEOWNER**, or **PRO ADVERTISING**.
 - **Calculates Real Intent**: Subtracts points for "Company Speech" (Licensed/Insured) and adds points for "Pain Points" (Need help, estimate, backyard).
@@ -36,4 +38,3 @@ The `pro_lead_search.py` script shows how we use **Semantic Search** to find lea
 ## Automation
 
 Run the scraper 4x daily to stay ahead of the competition. Flagged "New" leads will appear at the top of your dashboard.
-
