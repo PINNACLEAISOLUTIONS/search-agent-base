@@ -27,16 +27,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests beautifulsoup4 pandas playwright playwright-stealth
           playwright install chromium
+          playwright install-deps
 
       - name: Run Scraper
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python phonograph_scraper.py
-
       - name: Commit and Push
         run: |
           git config --global user.name "AntigravityBot"
           git config --global user.email "bot@antigravity.action"
           git add leads-v2.json leads.json leads.csv metadata.json seen_posts.json
           git commit -m "Auto-update: $(date -u)" || exit 0
+          git pull --rebase origin main
           git push
