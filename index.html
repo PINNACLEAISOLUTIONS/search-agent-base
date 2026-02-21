@@ -408,10 +408,11 @@
                 // Stats
                 const total = this.data.length;
                 const today = new Date().toISOString().split('T')[0];
-                const newLeads = this.data.filter(l => (l.posted_date || '').startsWith(today)).length;
+                const newLeads = this.data.filter(l => (l.posted_date || '').startsWith(today) || l.is_new).length;
 
                 document.getElementById('total-count').textContent = total;
                 document.getElementById('new-count').textContent = newLeads;
+
 
                 // Last Sync time from first item or metadata (approx)
                 if (this.data.length > 0) {
