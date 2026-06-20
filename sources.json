@@ -1,0 +1,83 @@
+[
+  {
+    "id": "cl_miami_victrola",
+    "name": "Craigslist Miami - Victrola",
+    "enabled": true,
+    "type": "craigslist",
+    "url": "https://miami.craigslist.org/search/atq?query=victrola",
+    "region": "Miami",
+    "keyword": "victrola"
+  },
+  {
+    "id": "cl_miami_phonograph",
+    "name": "Craigslist Miami - Phonograph",
+    "enabled": true,
+    "type": "craigslist",
+    "url": "https://miami.craigslist.org/search/atq?query=phonograph",
+    "region": "Miami",
+    "keyword": "phonograph"
+  },
+  {
+    "id": "cl_tampa_victrola",
+    "name": "Craigslist Tampa - Victrola",
+    "enabled": true,
+    "type": "craigslist",
+    "url": "https://tampa.craigslist.org/search/atq?query=victrola",
+    "region": "Tampa",
+    "keyword": "victrola"
+  },
+  {
+    "id": "cl_tampa_phonograph",
+    "name": "Craigslist Tampa - Phonograph",
+    "enabled": true,
+    "type": "craigslist",
+    "url": "https://tampa.craigslist.org/search/atq?query=phonograph",
+    "region": "Tampa",
+    "keyword": "phonograph"
+  },
+  {
+    "id": "cl_orlando_victrola",
+    "name": "Craigslist Orlando - Victrola",
+    "enabled": true,
+    "type": "craigslist",
+    "url": "https://orlando.craigslist.org/search/atq?query=victrola",
+    "region": "Orlando",
+    "keyword": "victrola"
+  },
+  {
+    "id": "cl_orlando_phonograph",
+    "name": "Craigslist Orlando - Phonograph",
+    "enabled": true,
+    "type": "craigslist",
+    "url": "https://orlando.craigslist.org/search/atq?query=phonograph",
+    "region": "Orlando",
+    "keyword": "phonograph"
+  },
+  {
+    "id": "cl_daytona_victrola",
+    "name": "Craigslist Daytona - Victrola",
+    "enabled": true,
+    "type": "craigslist",
+    "url": "https://daytona.craigslist.org/search/atq?query=victrola",
+    "region": "Daytona",
+    "keyword": "victrola"
+  },
+  {
+    "id": "cl_daytona_phonograph",
+    "name": "Craigslist Daytona - Phonograph",
+    "enabled": true,
+    "type": "craigslist",
+    "url": "https://daytona.craigslist.org/search/atq?query=phonograph",
+    "region": "Daytona",
+    "keyword": "phonograph"
+  },
+  {
+    "id": "sample_feed",
+    "name": "Sample Antique Feed",
+    "enabled": true,
+    "type": "rss",
+    "url": "file:///c:/Users/futur/OLDTIMECRANK SEARCH/search-agent-base-1/sample_feed.xml",
+    "region": "Florida",
+    "keyword": "antique"
+  }
+]

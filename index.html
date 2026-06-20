@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OLDTIMECRANK - ANTIQUE PHONOGRAPH ENGINE</title>
     <meta name="description"
-        content="Live antique phonograph discovery engine - scanning all Florida Craigslist regions automatically every 6 hours.">
+        content="Live antique phonograph discovery engine - scanning configured antique feeds automatically.">
     <!-- Google Fonts: Playfair Display (Serif) for headings, Lato (Sans) for body -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -28,7 +28,7 @@
             --glass-border: rgba(255, 255, 255, 0.3);
             --glass-bg: rgba(255, 255, 255, 0.7);
             --success: #2E8B57;
-            /* Sea Green */
+            --danger: #b22222;
         }
 
         * {
@@ -51,7 +51,6 @@
             color: #fff;
             text-align: center;
             padding: 60px 20px 80px;
-            /* Extra padding bottom for overlap */
             position: relative;
             clip-path: polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%);
         }
@@ -94,7 +93,18 @@
             padding: 0 20px 40px;
             position: relative;
             top: -40px;
-            /* Pull up into header */
+        }
+
+        /* Alert Warning Box */
+        .alert-box {
+            background-color: #fde8e8;
+            border: 1px solid #f8b4b4;
+            color: #9b1c1c;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.9em;
+            display: none;
         }
 
         /* ─── CONTROLS / STATUS ─── */
@@ -111,7 +121,7 @@
             justify-content: space-between;
             align-items: center;
             gap: 20px;
-            margin-bottom: 40px;
+            margin-bottom: 30px;
         }
 
         .stats-group {
@@ -160,6 +170,53 @@
             color: #000;
         }
 
+        /* ─── FILTER BAR ─── */
+        .filter-bar {
+            background: #fff;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            min-width: 180px;
+        }
+
+        .filter-group label {
+            font-size: 0.75em;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: #777;
+            margin-bottom: 5px;
+            letter-spacing: 0.5px;
+        }
+
+        .filter-group input,
+        .filter-group select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-family: 'Lato', sans-serif;
+            font-size: 0.9em;
+            color: var(--text-color);
+            background-color: #fff;
+            outline: none;
+        }
+
+        .filter-group input:focus,
+        .filter-group select:focus {
+            border-color: var(--accent-color);
+        }
+
         /* ─── GRID ─── */
         .grid {
             display: grid;
@@ -183,6 +240,11 @@
         .card:hover {
             transform: translateY(-8px);
             box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
+        }
+
+        /* Seen item dimming style */
+        .card.is-seen {
+            opacity: 0.65;
         }
 
         .card-img-wrap {
@@ -224,16 +286,12 @@
             font-size: 0.75em;
             font-weight: 700;
             color: #555;
+            text-transform: uppercase;
         }
 
-        .score-high {
-            background: #E8F5E9;
-            color: #2E7D32;
-        }
-
-        .score-med {
-            background: #FFF8E1;
-            color: #F57F17;
+        .score-seen {
+            background: #e2e8f0;
+            color: #4a5568;
         }
 
         .region-text {
@@ -290,10 +348,24 @@
             border-bottom: 2px solid var(--accent-color);
             padding-bottom: 2px;
             transition: color 0.2s;
+            cursor: pointer;
         }
 
         .btn-link:hover {
             color: var(--accent-color);
+        }
+
+        .btn-seen-toggle {
+            background: none;
+            border: none;
+            font-size: 0.8em;
+            color: #666;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .btn-seen-toggle:hover {
+            color: var(--text-color);
         }
 
         /* NEW RIBBON */
@@ -335,7 +407,8 @@
                 grid-template-columns: 1fr;
             }
 
-            .controls-bar {
+            .controls-bar,
+            .filter-bar {
                 flex-direction: column;
                 align-items: stretch;
                 text-align: center;
@@ -353,10 +426,15 @@
     <header>
         <h1>OldTimeCrank</h1>
         <p class="subtitle">Curated Antique Phonograph Discovery</p>
-        <div class="auto-badge">Updated Daily</div>
+        <div class="auto-badge">Auto-updated every 4 hours</div>
     </header>
 
     <div class="container">
+        <!-- Error alert block -->
+        <div id="error-alert" class="alert-box">
+            <strong>Sync Alert!</strong> The last automatic feed update had issues: <span id="error-alert-msg"></span>
+        </div>
+
         <div class="controls-bar">
             <div class="stats-group">
                 <div class="stat-item">
@@ -365,16 +443,42 @@
                 </div>
                 <div class="stat-item">
                     <div class="stat-val" id="new-count">-</div>
-                    <div class="stat-lbl">New Today</div>
+                    <div class="stat-lbl">Unseen</div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-val" id="last-sync">-</div>
-                    <div class="stat-lbl">Synced</div>
+                    <div class="stat-lbl">Last Synced</div>
                 </div>
             </div>
-            <button class="refresh-btn" onclick="app.refresh()">
-                <span>↻ Refresh Data</span>
+            <button class="refresh-btn" onclick="App.refresh()">
+                <span id="btn-label">↻ Sync Now</span>
             </button>
+        </div>
+
+        <!-- Filter bar -->
+        <div class="filter-bar">
+            <div class="filter-group">
+                <label for="filter-search">Search Keyword</label>
+                <input type="text" id="filter-search" placeholder="Search title..." oninput="App.applyFilters()">
+            </div>
+            <div class="filter-group">
+                <label for="filter-source">Feed Source</label>
+                <select id="filter-source" onchange="App.applyFilters()">
+                    <option value="">All Sources</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="filter-price">Max Price ($)</label>
+                <input type="number" id="filter-price" placeholder="e.g. 500" oninput="App.applyFilters()">
+            </div>
+            <div class="filter-group">
+                <label for="filter-seen">Seen Status</label>
+                <select id="filter-seen" onchange="App.applyFilters()">
+                    <option value="unseen">Unseen Only (New)</option>
+                    <option value="all">Show All</option>
+                    <option value="seen">Seen Only</option>
+                </select>
+            </div>
         </div>
 
         <div id="results" class="grid">
@@ -385,94 +489,190 @@
     <script>
         const App = {
             data: [],
+            seenIds: new Set(),
 
             async init() {
+                this.loadSeenFromStorage();
                 await this.loadData();
+                this.setupFiltersListeners();
+            },
+
+            loadSeenFromStorage() {
+                try {
+                    const seen = localStorage.getItem('seen_listings');
+                    if (seen) {
+                        this.seenIds = new Set(JSON.parse(seen));
+                    }
+                } catch (e) {
+                    console.error("Failed to load seen state:", e);
+                }
+            },
+
+            saveSeenToStorage() {
+                try {
+                    localStorage.setItem('seen_listings', JSON.stringify(Array.from(this.seenIds)));
+                } catch (e) {
+                    console.error("Failed to save seen state:", e);
+                }
             },
 
             async loadData() {
                 const grid = document.getElementById('results');
 
                 try {
-                    // Try fetch live data with cache busting
-                    const res = await fetch(`leads-v2.json?t=${Date.now()}`);
-                    if (!res.ok) throw new Error("Failed to load");
-                    this.data = await res.json();
+                    // Fetch live listings
+                    const resListings = await fetch(`/api/listings?t=${Date.now()}`);
+                    if (!resListings.ok) throw new Error("Failed to load listings");
+                    this.data = await resListings.json();
+
+                    // Fetch status logs
+                    const resStatus = await fetch(`/api/status?t=${Date.now()}`);
+                    if (resStatus.ok) {
+                        const statusObj = await resStatus.json();
+                        this.updateStatusDisplay(statusObj);
+                    }
                 } catch (e) {
                     console.error(e);
-                    // Minimal fallback if live fetch fails completely
                     grid.innerHTML = '<div class="loader">System Syncing... Please verify connection.</div>';
                     return;
                 }
 
-                this.render();
+                this.populateSourceDropdown();
+                this.applyFilters();
             },
 
-            render() {
+            updateStatusDisplay(statusObj) {
+                const alertBox = document.getElementById('error-alert');
+                const alertMsg = document.getElementById('error-alert-msg');
+                const lastSyncEl = document.getElementById('last-sync');
+
+                if (statusObj.status === 'failure') {
+                    alertMsg.textContent = statusObj.error_message || 'Unknown network error.';
+                    alertBox.style.display = 'block';
+                } else {
+                    alertBox.style.display = 'none';
+                }
+
+                if (statusObj.run_at) {
+                    // Convert UTC timestamp
+                    const d = new Date(statusObj.run_at.replace(" ", "T") + "Z");
+                    lastSyncEl.textContent = d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + " " + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                } else {
+                    lastSyncEl.textContent = "Never";
+                }
+            },
+
+            populateSourceDropdown() {
+                const select = document.getElementById('filter-source');
+                // Keep the 'All Sources' option
+                select.innerHTML = '<option value="">All Sources</option>';
+
+                const sources = Array.from(new Set(this.data.map(item => item.source))).filter(Boolean);
+                sources.sort().forEach(src => {
+                    const opt = document.createElement('option');
+                    opt.value = src;
+                    opt.textContent = src;
+                    select.appendChild(opt);
+                });
+            },
+
+            setupFiltersListeners() {
+                // Done on input/change tags directly in HTML
+            },
+
+            applyFilters() {
+                const searchVal = document.getElementById('filter-search').value.toLowerCase().strip ? document.getElementById('filter-search').value.toLowerCase().trim() : document.getElementById('filter-search').value.toLowerCase();
+                const sourceVal = document.getElementById('filter-source').value;
+                const priceVal = parseFloat(document.getElementById('filter-price').value);
+                const seenVal = document.getElementById('filter-seen').value;
+
+                const filtered = this.data.filter(item => {
+                    // 1. Keyword search filter
+                    if (searchVal) {
+                        const title = (item.title || '').toLowerCase();
+                        const location = (item.location || '').toLowerCase();
+                        if (!title.includes(searchVal) && !location.includes(searchVal)) {
+                            return false;
+                        }
+                    }
+
+                    // 2. Source filter
+                    if (sourceVal && item.source !== sourceVal) {
+                        return false;
+                    }
+
+                    // 3. Price filter
+                    if (!isNaN(priceVal)) {
+                        // Strip currency signs and commas: "$350" -> 350
+                        const numericPrice = parseFloat((item.price || '').replace(/[^0-9.]/g, ''));
+                        if (isNaN(numericPrice) || numericPrice > priceVal) {
+                            return false;
+                        }
+                    }
+
+                    // 4. Seen status filter
+                    const isSeen = this.seenIds.has(item.listing_id) || item.seen === 1;
+                    if (seenVal === 'unseen' && isSeen) return false;
+                    if (seenVal === 'seen' && !isSeen) return false;
+
+                    return true;
+                });
+
+                this.render(filtered);
+            },
+
+            render(filteredData) {
                 const grid = document.getElementById('results');
                 grid.innerHTML = '';
 
-                // Sort newest first
-                this.data.sort((a, b) => {
-                    const dateA = a.posted_date || '1970-01-01';
-                    const dateB = b.posted_date || '1970-01-01';
-                    if (dateB !== dateA) return dateB.localeCompare(dateA);
-                    return (b.id || '').localeCompare(a.id || '');
-                });
-
-                // Stats
+                // Count stats
                 const total = this.data.length;
-                const today = new Date().toISOString().split('T')[0];
-                const newLeads = this.data.filter(l => (l.posted_date || '').startsWith(today) || l.is_new).length;
+                const unseen = this.data.filter(item => !this.seenIds.has(item.listing_id) && item.seen !== 1).length;
 
                 document.getElementById('total-count').textContent = total;
-                document.getElementById('new-count').textContent = newLeads;
+                document.getElementById('new-count').textContent = unseen;
 
-                // Sync time
-                if (this.data.length > 0) {
-                    const last = this.data[0].scraped_at || new Date().toISOString();
-                    const d = new Date(last);
-                    document.getElementById('last-sync').textContent = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                if (filteredData.length === 0) {
+                    grid.innerHTML = '<div class="loader">No matching listings found.</div>';
+                    return;
                 }
 
-                // Render Cards
-                this.data.forEach(item => {
+                filteredData.forEach(item => {
                     const card = document.createElement('div');
-                    card.className = 'card';
+                    const isSeen = this.seenIds.has(item.listing_id) || item.seen === 1;
+                    card.className = `card ${isSeen ? 'is-seen' : ''}`;
 
-                    // Logic
-                    const isNew = (item.posted_date || '').startsWith(today) || item.is_new;
-                    const ribbon = isNew ? '<div class="ribbon">New Discovery</div>' : '';
+                    const ribbon = !isSeen ? '<div class="ribbon">New Feed Ingest</div>' : '';
+                    const scoreClass = 'score-pill';
+                    const scoreLabel = isSeen ? 'Seen' : 'Unseen';
 
-                    const scoreClass = item.score >= 4 ? 'score-high' : 'score-med';
-                    const scoreLabel = item.score >= 4 ? 'High Value' : 'Potential';
-
-                    // Image Fallback
-                    let imgUrl = item.image;
-                    if (!imgUrl || imgUrl.startsWith('data:') || imgUrl.includes('peace.jpg')) {
-                        // Subtle pattern placeholder
-                        imgUrl = 'https://www.transparenttextures.com/patterns/aged-paper.png';
+                    // Parse date
+                    let dateStr = "Unknown Date";
+                    if (item.posted_at) {
+                        try {
+                            const d = new Date(item.posted_at);
+                            dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                        } catch (e) {}
                     }
-
-                    // Date fmt
-                    const d = new Date((item.posted_date || '') + 'T12:00:00'); // Normalize to avoid timezone shift
-                    const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
                     card.innerHTML = `
                         ${ribbon}
                         <div class="card-img-wrap">
-                            <img src="${imgUrl}" class="card-img" alt="${item.title}" onerror="this.src='https://www.transparenttextures.com/patterns/aged-paper.png'">
+                            <img src="${item.image_url}" class="card-img" alt="${item.title}" onerror="this.src='https://www.transparenttextures.com/patterns/aged-paper.png'">
                         </div>
                         <div class="card-body">
                             <div class="badge-row">
-                                <span class="region-text">📍 ${item.region}</span>
-                                <span class="score-pill ${scoreClass}">${scoreLabel}</span>
+                                <span class="region-text">📍 ${item.location || 'Unknown'}</span>
+                                <span class="score-pill ${isSeen ? 'score-seen' : ''}">${scoreLabel}</span>
                             </div>
                             <h3 class="card-title">${item.title}</h3>
                             <div class="card-price">${item.price}</div>
                             <div class="date-badge">Posted: ${dateStr}</div>
                             <div class="card-meta">
-                                <a href="${item.link}" target="_blank" class="btn-link">View Listing →</a>
+                                <a href="${item.url}" target="_blank" class="btn-link" onclick="App.markAsSeen('${item.listing_id}')">View Listing →</a>
+                                <button class="btn-seen-toggle" onclick="App.toggleSeen('${item.listing_id}')">
+                                    Mark as ${isSeen ? 'Unseen' : 'Seen'}
+                                </button>
                             </div>
                         </div>
                     `;
@@ -481,12 +681,39 @@
                 });
             },
 
+            markAsSeen(listingId) {
+                if (!this.seenIds.has(listingId)) {
+                    this.seenIds.add(listingId);
+                    this.saveSeenToStorage();
+                    this.sendSeenToServer(listingId);
+                    this.applyFilters();
+                }
+            },
+
+            toggleSeen(listingId) {
+                if (this.seenIds.has(listingId)) {
+                    this.seenIds.delete(listingId);
+                } else {
+                    this.seenIds.add(listingId);
+                    this.sendSeenToServer(listingId);
+                }
+                this.saveSeenToStorage();
+                this.applyFilters();
+            },
+
+            async sendSeenToServer(listingId) {
+                try {
+                    await fetch(`/api/seen/${listingId}`, { method: 'POST' });
+                } catch (e) {
+                    console.error("Failed to notify backend of seen state:", e);
+                }
+            },
+
             async refresh() {
-                const btn = document.querySelector('.refresh-btn span');
-                const original = btn.textContent;
-                btn.textContent = 'Syncing...';
+                const btnLabel = document.getElementById('btn-label');
+                btnLabel.textContent = 'Syncing...';
                 await this.loadData();
-                btn.textContent = original;
+                btnLabel.textContent = '↻ Sync Now';
             }
         };
 

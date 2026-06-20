@@ -1,85 +1,121 @@
 import os
-import asyncio
+import sqlite3
 import logging
-import zipfile
-import io
-import requests
-from fastapi import FastAPI, BackgroundTasks
-from fastapi.responses import JSONResponse
-from phonograph_scraper import PhonographScraper
+from fastapi import FastAPI
+from fastapi.responses import FileResponse, JSONResponse
+from fetch_listings import init_db
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-logger = logging.getLogger("render_app")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
+logger = logging.getLogger("app")
 
-app = FastAPI(title="OldTimeCrank Scraper Service")
+app = FastAPI(title="OldTimeCrank Search Engine")
 
-# Netlify credentials from environment variables
-NETLIFY_AUTH_TOKEN = os.environ.get("NETLIFY_AUTH_TOKEN")
-NETLIFY_SITE_ID = os.environ.get("NETLIFY_SITE_ID")
+# Get database path from environment variable or default to local path
+DATABASE_PATH = os.environ.get("DATABASE_PATH", "./data/listings.db")
 
-def deploy_to_netlify():
-    """ZIPs the workspace static files and deploys to Netlify using their REST API."""
-    if not NETLIFY_AUTH_TOKEN or not NETLIFY_SITE_ID:
-        logger.error("Missing NETLIFY_AUTH_TOKEN or NETLIFY_SITE_ID environment variables!")
-        return False
-        
-    logger.info("Preparing ZIP file for Netlify deployment...")
-    zip_buffer = io.BytesIO()
-    
-    # Files to include in the deployment
-    files_to_deploy = ["index.html", "leads-v2.json", "leads.json", "leads.csv", "metadata.json", "seen_posts.json"]
-    
-    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-        for filename in files_to_deploy:
-            if os.path.exists(filename):
-                zip_file.write(filename, arcname=filename)
-                logger.info(f"  Added {filename} to ZIP")
-            else:
-                logger.warning(f"  File {filename} not found, skipping")
-                
-    zip_buffer.seek(0)
-    zip_data = zip_buffer.read()
-    
-    logger.info("Uploading ZIP to Netlify...")
-    url = f"https://api.netlify.com/api/v1/sites/{NETLIFY_SITE_ID}/deploys"
-    headers = {
-        "Authorization": f"Bearer {NETLIFY_AUTH_TOKEN}",
-        "Content-Type": "application/zip"
-    }
-    
-    try:
-        response = requests.post(url, headers=headers, data=zip_data, timeout=60)
-        if response.status_code in [200, 201]:
-            logger.info("Successfully deployed to Netlify!")
-            return True
-        else:
-            logger.error(f"Failed to deploy: {response.status_code} {response.text}")
-            return False
-    except Exception as e:
-        logger.error(f"Error calling Netlify API: {e}")
-        return False
-
-async def run_scraper_and_deploy():
-    logger.info("Starting background Craigslist scraper run...")
-    try:
-        scraper = PhonographScraper()
-        await scraper.run()
-        logger.info("Scrape complete. Deploying to Netlify...")
-        deploy_to_netlify()
-    except Exception as e:
-        logger.error(f"Error during background scrape: {e}")
+# Initialize database on startup
+@app.on_event("startup")
+def startup_event():
+    logger.info("Initializing database on startup...")
+    init_db()
 
 @app.get("/")
-def home():
-    return {
-        "status": "online", 
-        "message": "OldTimeCrank Scraper Service is running.",
-        "netlify_site_id": NETLIFY_SITE_ID,
-        "has_token": bool(NETLIFY_AUTH_TOKEN)
-    }
+def read_root():
+    """Serves the static index.html dashboard."""
+    index_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    else:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "index.html dashboard file not found in root directory."}
+        )
 
-@app.get("/scrape")
-def trigger_scrape(background_tasks: BackgroundTasks):
-    background_tasks.add_task(run_scraper_and_deploy)
-    return {"status": "accepted", "message": "Scraper run triggered in background."}
+@app.get("/api/listings")
+def get_listings():
+    """Queries the SQLite listings table and returns all listings sorted by posted_at DESC."""
+    if not os.path.exists(DATABASE_PATH):
+        return []
+
+    try:
+        conn = sqlite3.connect(DATABASE_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT id, title, price, location, source, url, image_url, posted_at, first_seen_at, seen, keyword 
+            FROM listings 
+            ORDER BY datetime(posted_at) DESC, id DESC
+        """)
+        
+        rows = cursor.fetchall()
+        listings = [dict(row) for row in rows]
+        conn.close()
+        return listings
+    except Exception as e:
+        logger.error(f"Error reading listings: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Failed to retrieve listings from database."}
+        )
+
+@app.get("/api/status")
+def get_status():
+    """Retrieves the last execution status and statistics from update_logs."""
+    if not os.path.exists(DATABASE_PATH):
+        return {"status": "pending", "message": "Database not populated yet."}
+
+    try:
+        conn = sqlite3.connect(DATABASE_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT status, checked_count, inserted_count, skipped_count, error_message, run_at 
+            FROM update_logs 
+            ORDER BY id DESC 
+            LIMIT 1
+        """)
+        
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            return dict(row)
+        else:
+            return {"status": "pending", "message": "No update logs found."}
+    except Exception as e:
+        logger.error(f"Error reading status logs: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Failed to retrieve update status from database."}
+        )
+
+@app.post("/api/seen/{listing_id}")
+def mark_as_seen(listing_id: str):
+    """Updates the database entry to mark a listing as seen."""
+    if not os.path.exists(DATABASE_PATH):
+        return JSONResponse(status_code=404, content={"error": "Database not found."})
+
+    try:
+        conn = sqlite3.connect(DATABASE_PATH)
+        cursor = conn.cursor()
+        cursor.execute("UPDATE listings SET seen = 1 WHERE listing_id = ?", (listing_id,))
+        conn.commit()
+        updated = cursor.rowcount
+        conn.close()
+        
+        if updated > 0:
+            return {"status": "success", "message": f"Listing {listing_id} marked as seen."}
+        else:
+            return JSONResponse(status_code=404, content={"error": "Listing ID not found."})
+    except Exception as e:
+        logger.error(f"Error updating listing seen state: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Failed to update seen state."}
+        )

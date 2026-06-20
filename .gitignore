@@ -1,0 +1,23 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Database files
+data/
+*.db
+
+# Local environment files
+.env
+.env.local
+
+# Netlify build artifacts
+.netlify/
+
+# Log files
+*.log
+_test_run*.txt
+_test_output_images.txt
+search_history_results.txt
+debug.html
+debug_page.html

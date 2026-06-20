@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns="http://purl.org/rss/1.0/"
+         xmlns:dc="http://purl.org/dc/elements/1.1/"
+         xmlns:enc="http://purl.org/rss/1.0/modules/enc/">
+  <channel rdf:about="https://miami.craigslist.org/search/atq">
+    <title>miami antiques - craigslist</title>
+    <link>https://miami.craigslist.org/search/atq</link>
+    <description>antiques for sale - miami craigslist</description>
+    <items>
+      <rdf:Seq>
+        <rdf:li rdf:resource="https://miami.craigslist.org/mdc/atq/d/miami-1915-victrola-talking-machine/7942000001.html" />
+        <rdf:li rdf:resource="https://miami.craigslist.org/mdc/atq/d/miami-antique-edison-phonograph/7942000002.html" />
+      </rdf:Seq>
+    </items>
+  </channel>
+
+  <item rdf:about="https://miami.craigslist.org/mdc/atq/d/miami-1915-victrola-talking-machine/7942000001.html">
+    <title><![CDATA[1915 Victor Victrola Talking Machine - $350 (Miami)]]></title>
+    <link>https://miami.craigslist.org/mdc/atq/d/miami-1915-victrola-talking-machine/7942000001.html</link>
+    <description><![CDATA[Beautiful oak cabinet, runs perfectly.]]></description>
+    <dc:date>2026-06-20T12:00:00-04:00</dc:date>
+    <dc:title><![CDATA[1915 Victor Victrola Talking Machine]]></dc:title>
+    <enc:enclosure resource="https://images.craigslist.org/00a0a_abc123_600x450.jpg" type="image/jpeg"/>
+  </item>
+
+  <item rdf:about="https://miami.craigslist.org/mdc/atq/d/miami-antique-edison-phonograph/7942000002.html">
+    <title><![CDATA[Antique Edison Cylinder Phonograph - $450 (Tampa)]]></title>
+    <link>https://miami.craigslist.org/mdc/atq/d/miami-antique-edison-phonograph/7942000002.html</link>
+    <description><![CDATA[Excellent working condition Edison phonograph with 10 cylinders.]]></description>
+    <dc:date>2026-06-20T11:30:00-04:00</dc:date>
+    <dc:title><![CDATA[Antique Edison Cylinder Phonograph]]></dc:title>
+    <enc:enclosure resource="https://images.craigslist.org/00b0b_def456_600x450.jpg" type="image/jpeg"/>
+  </item>
+</rdf:RDF>

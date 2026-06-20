@@ -5,10 +5,13 @@ WORKDIR /app
 
 # Copy requirements and install
 COPY requirements.txt .
-RUN python3 -m pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application files
 COPY . .
 
-# Start FastAPI app, listening on PORT env var (injected by Render)
-CMD python3 -m uvicorn app:app --host 0.0.0.0 --port ${PORT:-8000}
+# Expose port (Render injects PORT)
+EXPOSE 8000
+
+# Start FastAPI app, listening on PORT env var
+CMD python -m uvicorn app:app --host 0.0.0.0 --port ${PORT:-8000}

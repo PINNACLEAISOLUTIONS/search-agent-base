@@ -1,0 +1,17 @@
+{
+  "name": "oldtimecrank-search",
+  "version": "1.0.0",
+  "description": "Simplified Antique Listing Alert Engine using SQLite",
+  "main": "app.py",
+  "scripts": {
+    "fetch": "python fetch_listings.py",
+    "start": "python -m uvicorn app:app --host 0.0.0.0 --port 8000"
+  },
+  "keywords": [
+    "antique",
+    "listing",
+    "alert"
+  ],
+  "author": "Antigravity",
+  "license": "ISC"
+}
