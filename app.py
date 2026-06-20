@@ -1,7 +1,7 @@
 import os
 import sqlite3
 import logging
-from fastapi import FastAPI
+from fastapi import FastAPI, BackgroundTasks
 from fastapi.responses import FileResponse, JSONResponse
 from fetch_listings import init_db
 
@@ -119,3 +119,14 @@ def mark_as_seen(listing_id: str):
             status_code=500,
             content={"error": "Failed to update seen state."}
         )
+
+@app.post("/api/fetch")
+def trigger_fetch(background_tasks: BackgroundTasks, token: str = None):
+    """Triggers the listing fetch process in the background, authenticated by FETCH_TOKEN."""
+    expected_token = os.environ.get("FETCH_TOKEN")
+    if expected_token and token != expected_token:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized. Invalid token."})
+
+    from fetch_listings import fetch_and_save
+    background_tasks.add_task(fetch_and_save)
+    return {"status": "success", "message": "Fetch job triggered in background."}

@@ -100,9 +100,22 @@ class RssListingSource(ListingSource):
         }
 
         try:
-            req = urllib.request.Request(self.url, headers=headers)
-            with urllib.request.urlopen(req, timeout=30) as response:
-                content = response.read()
+            if self.url.startswith("file://"):
+                import urllib.parse
+                parsed_url = urllib.parse.urlparse(self.url)
+                file_path = urllib.request.url2pathname(parsed_url.path)
+                # Fallback to current working directory if absolute path is not found
+                if not os.path.exists(file_path):
+                    basename = os.path.basename(file_path)
+                    if os.path.exists(basename):
+                        file_path = basename
+                logger.info(f"Reading local feed file from: {file_path}")
+                with open(file_path, "rb") as f:
+                    content = f.read()
+            else:
+                req = urllib.request.Request(self.url, headers=headers)
+                with urllib.request.urlopen(req, timeout=30) as response:
+                    content = response.read()
         except Exception as e:
             logger.error(f"Failed to fetch feed {self.name} from {self.url}: {e}")
             raise e

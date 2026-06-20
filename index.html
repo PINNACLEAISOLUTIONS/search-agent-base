@@ -711,9 +711,65 @@
 
             async refresh() {
                 const btnLabel = document.getElementById('btn-label');
-                btnLabel.textContent = 'Syncing...';
+                const originalLabel = '↻ Sync Now';
+                btnLabel.textContent = 'Triggering Sync...';
+
+                let token = localStorage.getItem('sync_token') || '';
+
+                try {
+                    let url = '/api/fetch';
+                    if (token) {
+                        url += `?token=${encodeURIComponent(token)}`;
+                    }
+
+                    let response = await fetch(url, { method: 'POST' });
+
+                    if (response.status === 401) {
+                        const inputToken = prompt("Please enter the FETCH_TOKEN to authorize manual sync:");
+                        if (inputToken !== null) {
+                            token = inputToken.trim();
+                            localStorage.setItem('sync_token', token);
+                            url = `/api/fetch?token=${encodeURIComponent(token)}`;
+                            response = await fetch(url, { method: 'POST' });
+                        } else {
+                            btnLabel.textContent = 'Sync Cancelled';
+                            setTimeout(() => { btnLabel.textContent = originalLabel; }, 2000);
+                            return;
+                        }
+                    }
+
+                    if (response.ok) {
+                        btnLabel.textContent = 'Syncing Feeds...';
+                        // Poll for status progress up to 8 times (every 3 seconds)
+                        for (let i = 0; i < 8; i++) {
+                            await new Promise(resolve => setTimeout(resolve, 3000));
+                            await this.loadData();
+                            
+                            // Check if last run was successful/completed recently
+                            const resStatus = await fetch(`/api/status?t=${Date.now()}`);
+                            if (resStatus.ok) {
+                                const statusObj = await resStatus.json();
+                                if (statusObj.run_at) {
+                                    const lastRun = new Date(statusObj.run_at.replace(" ", "T") + "Z");
+                                    const diffSeconds = (new Date() - lastRun) / 1000;
+                                    // If updated within the last 15 seconds, we are done
+                                    if (diffSeconds < 15) {
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        const errData = await response.json();
+                        alert(`Sync failed: ${errData.error || 'Server error'}`);
+                    }
+                } catch (e) {
+                    console.error("Error triggering sync:", e);
+                    alert("Network error triggering sync.");
+                }
+
                 await this.loadData();
-                btnLabel.textContent = '↻ Sync Now';
+                btnLabel.textContent = originalLabel;
             }
         };
 
