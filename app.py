@@ -1,8 +1,10 @@
 import os
+import json
 import sqlite3
 import logging
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from fetch_listings import init_db
 
 # Configure logging
@@ -13,6 +15,11 @@ logging.basicConfig(
 logger = logging.getLogger("app")
 
 app = FastAPI(title="OldTimeCrank Search Engine")
+
+# Mount images directory if present
+images_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "images")
+if os.path.exists(images_dir):
+    app.mount("/images", StaticFiles(directory=images_dir), name="images")
 
 # Get database path from environment variable or default to local path
 DATABASE_PATH = os.environ.get("DATABASE_PATH", "./data/listings.db")
@@ -34,6 +41,20 @@ def read_root():
             status_code=404,
             content={"error": "index.html dashboard file not found in root directory."}
         )
+
+@app.get("/api/items-for-sale")
+@app.get("/items_for_sale.json")
+def get_items_for_sale():
+    """Returns curated items available for sale from items_for_sale.json."""
+    items_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "items_for_sale.json")
+    if os.path.exists(items_file):
+        try:
+            with open(items_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            logger.error(f"Error reading items_for_sale.json: {e}")
+            return JSONResponse(status_code=500, content={"error": "Failed to read items for sale."})
+    return []
 
 @app.get("/api/listings")
 def get_listings():
