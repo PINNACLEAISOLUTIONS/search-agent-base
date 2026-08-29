@@ -2298,7 +2298,7 @@
                     card.innerHTML = `
                         ${ribbon}
                         <div class="card-img-wrap">
-                            <img src="${item.image_url}" class="card-img" alt="${item.title}" onerror="this.src='https://www.transparenttextures.com/patterns/aged-paper.png'">
+                            <img src="${(!item.image_url || item.image_url.includes('transparenttextures')) ? 'https://images.unsplash.com/photo-1545454675-3531b543be5d?auto=format&fit=crop&w=600&q=80' : item.image_url}" class="card-img" alt="${item.title}" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1545454675-3531b543be5d?auto=format&fit=crop&w=600&q=80';">
                         </div>
                         <div class="card-body">
                             <div class="badge-row">

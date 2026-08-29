@@ -284,8 +284,30 @@ def parse_craigslist_html(content: str, source_name: str, source_url: str, regio
                         except Exception:
                             pass
 
-            img_elem = item.select_one("img")
-            img_url = img_elem["src"] if (img_elem and img_elem.get("src")) else "https://www.transparenttextures.com/patterns/aged-paper.png"
+                        # Robust Craigslist image extraction (data-ids, data-src, srcset, or img tag)
+            img_url = ""
+            data_ids = item.get("data-ids")
+            if not data_ids:
+                d_elem = item.select_one("[data-ids]")
+                if d_elem:
+                    data_ids = d_elem.get("data-ids")
+
+            if data_ids:
+                first_id = data_ids.split(",")[0].split(":")[-1].strip()
+                if first_id:
+                    img_url = f"https://images.craigslist.org/{first_id}_600x450.jpg"
+
+            if not img_url:
+                img_elem = item.select_one("img[src*='craigslist'], img[data-src], img")
+                if img_elem:
+                    cand = img_elem.get("data-src") or img_elem.get("src") or ""
+                    if cand and not cand.endswith(".gif") and "transparent" not in cand:
+                        img_url = cand
+                    elif img_elem.get("srcset"):
+                        img_url = img_elem.get("srcset").split(",")[0].split(" ")[0]
+
+            if not img_url or "transparent" in img_url:
+                img_url = "https://images.unsplash.com/photo-1545454675-3531b543be5d?auto=format&fit=crop&w=600&q=80" 
 
             normalized_listings.append({
                 "title": title,
