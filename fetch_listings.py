@@ -227,7 +227,11 @@ class RssListingSource(ListingSource):
 
 # Helper function to parse Craigslist HTML
 def parse_craigslist_html(content: str, source_name: str, source_url: str, region: str, keyword: str) -> list:
-    from bs4 import BeautifulSoup
+    try:
+        from bs4 import BeautifulSoup
+    except ImportError:
+        import importlib
+        BeautifulSoup = getattr(importlib.import_module("bs4"), "BeautifulSoup")
     soup = BeautifulSoup(content, "html.parser")
     items = soup.select(".cl-search-result, .cl-static-search-result, .result-row, .gallery-card")
     logger.info(f"  Parsed {len(items)} items from HTML for '{source_name}'")
@@ -307,10 +311,13 @@ def fetch_craigslist_batch(cl_sources: list) -> dict:
         return results
 
     try:
-        from playwright.sync_api import sync_playwright
-        from playwright_stealth import stealth_sync
-    except ImportError:
-        logger.warning("Playwright not installed, skipping browser scrape.")
+        import importlib
+        playwright_mod = importlib.import_module("playwright.sync_api")
+        sync_playwright = getattr(playwright_mod, "sync_playwright")
+        stealth_mod = importlib.import_module("playwright_stealth")
+        stealth_sync = getattr(stealth_mod, "stealth_sync")
+    except (ImportError, ModuleNotFoundError, AttributeError):
+        logger.warning("Playwright or playwright-stealth not installed, skipping browser scrape.")
         return results
 
     logger.info(f"Launching shared Playwright Chromium for {len(cl_sources)} Craigslist sources...")
