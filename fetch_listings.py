@@ -1,9 +1,11 @@
 import os
 import re
+import csv
 import json
 import sqlite3
 import logging
 import urllib.request
+import urllib.parse
 import xml.etree.ElementTree as ET
 import time
 from datetime import datetime
@@ -92,7 +94,6 @@ class RssListingSource(ListingSource):
 
         logger.info(f"Fetching listings from feed: {self.name} ({self.url})")
         
-        # Standard browser headers to make legitimate requests
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
             "Accept": "application/xml,text/xml,application/xhtml+xml,text/html;q=0.9,*/*;q=0.8",
@@ -101,10 +102,8 @@ class RssListingSource(ListingSource):
 
         try:
             if self.url.startswith("file://"):
-                import urllib.parse
                 parsed_url = urllib.parse.urlparse(self.url)
                 file_path = urllib.request.url2pathname(parsed_url.path)
-                # Fallback to current working directory if absolute path is not found
                 if not os.path.exists(file_path):
                     basename = os.path.basename(file_path)
                     if os.path.exists(basename):
@@ -120,7 +119,6 @@ class RssListingSource(ListingSource):
             logger.error(f"Failed to fetch feed {self.name} from {self.url}: {e}")
             raise e
 
-        # If Craigslist returned a block page in html
         if b"Your request has been blocked" in content or b"<title>blocked</title>" in content:
             err_msg = f"Request to Craigslist source '{self.name}' was blocked by Craigslist firewall (403/Forbidden)."
             logger.warning(err_msg)
@@ -227,136 +225,218 @@ class RssListingSource(ListingSource):
 
         return normalized_listings
 
-# Craigslist Browser Scraping Source Subclass
-class CraigslistListingSource(ListingSource):
-    def fetch(self) -> list:
-        if not self.enabled:
-            logger.info(f"Source '{self.name}' is disabled. Skipping.")
-            return []
+# Helper function to parse Craigslist HTML
+def parse_craigslist_html(content: str, source_name: str, source_url: str, region: str, keyword: str) -> list:
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(content, "html.parser")
+    items = soup.select(".cl-search-result, .cl-static-search-result, .result-row, .gallery-card")
+    logger.info(f"  Parsed {len(items)} items from HTML for '{source_name}'")
 
-        logger.info(f"Fetching listings from Craigslist browser view: {self.name} ({self.url})")
+    normalized_listings = []
+    for item in items:
+        try:
+            title_elem = item.select_one("a.posting-title, .title, .result-title, .label, .titlestring")
+            if not title_elem:
+                continue
+            title = title_elem.get_text(strip=True)
+            
+            a_tag = item.select_one("a[href]")
+            if not a_tag:
+                continue
+            link = a_tag["href"]
+            if not link.startswith("http"):
+                match = re.match(r"(https?://[^/]+)", source_url)
+                base = match.group(1) if match else "https://craigslist.org"
+                link = base + link
+
+            price_elem = item.select_one(".priceinfo, .price, .result-price, .price-blob")
+            price = price_elem.get_text(strip=True) if price_elem else "N/A"
+
+            location_elem = item.select_one(".location, .nearby, .superregion")
+            location = location_elem.get_text(strip=True) if location_elem else region
+
+            post_id = item.get("data-pid")
+            if not post_id:
+                id_match = re.search(r'/(\d+)\.html', link)
+                if id_match:
+                    post_id = id_match.group(1)
+                else:
+                    import hashlib
+                    post_id = hashlib.md5(link.encode('utf-8')).hexdigest()
+
+            posted_date = datetime.now().strftime("%Y-%m-%d")
+            time_elem = item.select_one("time")
+            if time_elem and time_elem.get("datetime"):
+                posted_date = time_elem["datetime"].split(" ")[0]
+            else:
+                meta = item.select_one(".meta")
+                if meta:
+                    date_match = re.search(r"(\d{1,2}/\d{1,2})", meta.get_text())
+                    if date_match:
+                        try:
+                            dt = datetime.strptime(date_match.group(1), "%m/%d")
+                            dt = dt.replace(year=datetime.now().year)
+                            posted_date = dt.strftime("%Y-%m-%d")
+                        except Exception:
+                            pass
+
+            img_elem = item.select_one("img")
+            img_url = img_elem["src"] if (img_elem and img_elem.get("src")) else "https://www.transparenttextures.com/patterns/aged-paper.png"
+
+            normalized_listings.append({
+                "title": title,
+                "price": price,
+                "location": location,
+                "source": source_name,
+                "url": link,
+                "image_url": img_url,
+                "posted_at": posted_date,
+                "listing_id": post_id,
+                "keyword": keyword
+            })
+        except Exception as row_err:
+            logger.warning(f"Error parsing Craigslist row: {row_err}")
+            continue
+
+    return normalized_listings
+
+def fetch_craigslist_batch(cl_sources: list) -> dict:
+    """Fetches multiple Craigslist sources using a shared Playwright browser instance."""
+    results = {}
+    if not cl_sources:
+        return results
+
+    try:
         from playwright.sync_api import sync_playwright
         from playwright_stealth import stealth_sync
-        from bs4 import BeautifulSoup
+    except ImportError:
+        logger.warning("Playwright not installed, skipping browser scrape.")
+        return results
 
-        normalized_listings = []
+    logger.info(f"Launching shared Playwright Chromium for {len(cl_sources)} Craigslist sources...")
+    with sync_playwright() as p:
+        browser = p.chromium.launch(
+            headless=True,
+            args=[
+                "--disable-blink-features=AutomationControlled",
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-infobars",
+                "--disable-dev-shm-usage",
+                "--ignore-certificate-errors"
+            ]
+        )
+        context = browser.new_context(
+            viewport={"width": 1920, "height": 1080},
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+            locale="en-US",
+            timezone_id="America/New_York"
+        )
+        context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+        stealth_sync(context)
+        page = context.new_page()
 
-        try:
-            with sync_playwright() as p:
-                browser = p.chromium.launch(
-                    headless=True,
-                    args=[
-                        "--disable-blink-features=AutomationControlled",
-                        "--no-sandbox",
-                        "--disable-setuid-sandbox",
-                        "--disable-infobars",
-                        "--window-position=0,0",
-                        "--ignore-certificate-errors"
-                    ]
-                )
-                context = browser.new_context(
-                    viewport={"width": 1920, "height": 1080},
-                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
-                    locale="en-US",
-                    timezone_id="America/New_York"
-                )
-                
-                # Remove webdriver property
-                context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-                stealth_sync(context)
+        for config in cl_sources:
+            source_name = config.get("name")
+            source_url = config.get("url")
+            region = config.get("region", "Unknown")
+            keyword = config.get("keyword", "")
 
-                page = context.new_page()
-                page.goto(self.url, wait_until="domcontentloaded", timeout=60000)
+            if not config.get("enabled", True):
+                continue
+
+            logger.info(f"Visiting Craigslist source: {source_name} ({source_url})")
+            try:
+                page.goto(source_url, wait_until="domcontentloaded", timeout=25000)
+                time.sleep(1.5)
                 
-                # Wait 2 seconds for JS hydration
-                time.sleep(2)
-                
-                # Check for block
                 page_title = page.title()
                 if "blocked" in page_title.lower():
-                    browser.close()
-                    raise PermissionError(f"Craigslist blocked browser session for '{self.name}'.")
-
-                content = page.content()
-                browser.close()
-
-            # Parse DOM
-            soup = BeautifulSoup(content, "html.parser")
-            items = soup.select(".cl-search-result, .cl-static-search-result, .result-row")
-            logger.info(f"  Parsed {len(items)} items from HTML")
-
-            for item in items:
-                try:
-                    title_elem = item.select_one("a.posting-title, .title, .result-title")
-                    if not title_elem:
-                        continue
-                    title = title_elem.get_text(strip=True)
-                    
-                    # Extract link
-                    a_tag = item.select_one("a[href]")
-                    if not a_tag:
-                        continue
-                    link = a_tag["href"]
-                    if not link.startswith("http"):
-                        match = re.match(r"(https?://[^/]+)", self.url)
-                        base = match.group(1) if match else "https://craigslist.org"
-                        link = base + link
-
-                    # Extract price
-                    price_elem = item.select_one(".priceinfo, .price, .result-price")
-                    price = price_elem.get_text(strip=True) if price_elem else "N/A"
-
-                    # Location
-                    location_elem = item.select_one(".location, .nearby")
-                    location = location_elem.get_text(strip=True) if location_elem else self.region
-
-                    # Listing ID
-                    post_id = item.get("data-pid")
-                    if not post_id:
-                        id_match = re.search(r'/(\d+)\.html', link)
-                        if id_match:
-                            post_id = id_match.group(1)
-                        else:
-                            import hashlib
-                            post_id = hashlib.md5(link.encode('utf-8')).hexdigest()
-
-                    # Posted Date
-                    posted_date = datetime.now().strftime("%Y-%m-%d")
-                    time_elem = item.select_one("time")
-                    if time_elem and time_elem.get("datetime"):
-                        posted_date = time_elem["datetime"].split(" ")[0]
-                    else:
-                        meta = item.select_one(".meta")
-                        if meta:
-                            date_match = re.search(r"(\d{1,2}/\d{1,2})", meta.get_text())
-                            if date_match:
-                                try:
-                                    dt = datetime.strptime(date_match.group(1), "%m/%d")
-                                    dt = dt.replace(year=datetime.now().year)
-                                    posted_date = dt.strftime("%Y-%m-%d")
-                                except:
-                                    pass
-
-                    normalized_listings.append({
-                        "title": title,
-                        "price": price,
-                        "location": location,
-                        "source": self.name,
-                        "url": link,
-                        "image_url": "https://www.transparenttextures.com/patterns/aged-paper.png",
-                        "posted_at": posted_date,
-                        "listing_id": post_id,
-                        "keyword": self.keyword
-                    })
-                except Exception as row_err:
-                    logger.warning(f"Error parsing Craigslist row: {row_err}")
+                    logger.warning(f"Blocked by Craigslist for '{source_name}'.")
+                    results[config["id"]] = {"error": "Blocked by Craigslist anti-bot firewall", "items": []}
                     continue
 
-        except Exception as e:
-            logger.error(f"Error fetching from Craigslist source '{self.name}': {e}")
-            raise e
+                content = page.content()
+                items = parse_craigslist_html(content, source_name, source_url, region, keyword)
+                results[config["id"]] = {"error": None, "items": items}
+            except Exception as e:
+                logger.error(f"Error fetching Craigslist source '{source_name}': {e}")
+                results[config["id"]] = {"error": str(e), "items": []}
 
-        return normalized_listings
+        browser.close()
+
+    return results
+
+def export_static_data(conn, status: str, checked_total: int, inserted_total: int, skipped_total: int, error_message: str):
+    """Exports SQLite records to data/listings.json, data/status.json, metadata.json, leads.json, and leads.csv."""
+    os.makedirs("./data", exist_ok=True)
+    cursor = conn.cursor()
+    
+    # 1. Fetch all listings sorted by posted_at DESC
+    cursor.execute("""
+        SELECT id, title, price, location, source, url, image_url, posted_at, first_seen_at, seen, keyword, listing_id
+        FROM listings 
+        ORDER BY datetime(posted_at) DESC, id DESC
+    """)
+    rows = cursor.fetchall()
+    columns = [col[0] for col in cursor.description]
+    all_listings = [dict(zip(columns, row)) for row in rows]
+
+    # Save to data/listings.json and root listings.json
+    with open("./data/listings.json", "w", encoding="utf-8") as f:
+        json.dump(all_listings, f, indent=2)
+    with open("./listings.json", "w", encoding="utf-8") as f:
+        json.dump(all_listings, f, indent=2)
+    logger.info(f"Exported {len(all_listings)} listings to ./data/listings.json and ./listings.json")
+
+    # 2. Save status to data/status.json
+    status_obj = {
+        "status": status,
+        "checked_count": checked_total,
+        "inserted_count": inserted_total,
+        "skipped_count": skipped_total,
+        "error_message": error_message,
+        "run_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    }
+    with open("./data/status.json", "w", encoding="utf-8") as f:
+        json.dump(status_obj, f, indent=2)
+
+    # 3. Save metadata to metadata.json
+    metadata_obj = {
+        "last_updated": datetime.utcnow().isoformat(),
+        "total_leads": len(all_listings),
+        "new_leads_this_run": inserted_total,
+        "status": status
+    }
+    with open("./metadata.json", "w", encoding="utf-8") as f:
+        json.dump(metadata_obj, f, indent=2)
+
+    # 4. Save leads.json & leads.csv for workspace standard compatibility
+    with open("./leads.json", "w", encoding="utf-8") as f:
+        json.dump(all_listings, f, indent=2)
+
+    if all_listings:
+        keys = ["id", "listing_id", "title", "price", "location", "source", "url", "posted_at", "keyword"]
+        with open("./leads.csv", "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=keys, extrasaction="ignore")
+            writer.writeheader()
+            writer.writerows(all_listings)
+
+    # Also mirror to C:/Users/futur/gemini_workspace if it exists
+    gemini_ws = r"C:\Users\futur\gemini_workspace"
+    if os.path.exists(gemini_ws):
+        try:
+            with open(os.path.join(gemini_ws, "leads.json"), "w", encoding="utf-8") as f:
+                json.dump(all_listings, f, indent=2)
+            if all_listings:
+                with open(os.path.join(gemini_ws, "leads.csv"), "w", newline="", encoding="utf-8") as f:
+                    writer = csv.DictWriter(f, fieldnames=keys, extrasaction="ignore")
+                    writer.writeheader()
+                    writer.writerows(all_listings)
+        except Exception as ws_err:
+            logger.warning(f"Could not mirror leads to gemini_workspace: {ws_err}")
+
+    logger.info("Exported static files: data/listings.json, data/status.json, metadata.json, leads.json, leads.csv")
 
 def fetch_and_save():
     init_db()
@@ -375,19 +455,69 @@ def fetch_and_save():
     skipped_total = 0
     failures = []
 
+    # Separate Craigslist and RSS sources
+    cl_sources = [c for c in sources_config if c.get("type") == "craigslist" and c.get("enabled", True)]
+    rss_sources = [c for c in sources_config if c.get("type") != "craigslist" and c.get("enabled", True)]
+
+    # Fetch Craigslist sources in a pooled browser session
+    cl_results = {}
+    if cl_sources:
+        try:
+            cl_results = fetch_craigslist_batch(cl_sources)
+        except Exception as cl_err:
+            logger.error(f"Batch Craigslist scraping error: {cl_err}")
+            failures.append(f"Craigslist Batch: {cl_err}")
+
     conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
 
-    for config in sources_config:
-        source_type = config.get("type", "rss")
-        if source_type == "craigslist":
-            source = CraigslistListingSource(config)
-        else:
-            source = RssListingSource(config)
+    # Process Craigslist results
+    for config in cl_sources:
+        source_id = config.get("id")
+        source_name = config.get("name")
+        res = cl_results.get(source_id, {})
+        err = res.get("error")
+        listings = res.get("items", [])
 
-        if not source.enabled:
-            continue
+        if err:
+            clean_error = re.sub(r'token=[^&\s]+', 'token=REDACTED', str(err))
+            failures.append(f"{source_name}: {clean_error}")
 
+        checked_count = len(listings)
+        checked_total += checked_count
+        source_inserted = 0
+        source_skipped = 0
+
+        for listing in listings:
+            try:
+                cursor.execute("""
+                    INSERT OR IGNORE INTO listings (title, price, location, source, url, image_url, posted_at, listing_id, keyword)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    listing["title"],
+                    listing["price"],
+                    listing["location"],
+                    listing["source"],
+                    listing["url"],
+                    listing["image_url"],
+                    listing["posted_at"],
+                    listing["listing_id"],
+                    listing["keyword"]
+                ))
+                if cursor.rowcount > 0:
+                    source_inserted += 1
+                else:
+                    source_skipped += 1
+            except Exception as e:
+                logger.error(f"Failed to insert listing {listing.get('url')}: {e}")
+
+        inserted_total += source_inserted
+        skipped_total += source_skipped
+        logger.info(f"Source '{source_name}' complete. Checked: {checked_count}, Inserted: {source_inserted}, Skipped: {source_skipped}")
+
+    # Process RSS sources
+    for config in rss_sources:
+        source = RssListingSource(config)
         try:
             listings = source.fetch()
             checked_count = len(listings)
@@ -432,7 +562,7 @@ def fetch_and_save():
     status = "success"
     error_message = None
     if failures:
-        status = "failure"
+        status = "partial_success" if (inserted_total > 0 or checked_total > 0) else "failure"
         error_message = "; ".join(failures)
 
     try:
@@ -445,6 +575,12 @@ def fetch_and_save():
     except Exception as log_err:
         logger.error(f"Failed to write execution log to database: {log_err}")
 
+    # Export static data files for static website hosting (Netlify)
+    try:
+        export_static_data(conn, status, checked_total, inserted_total, skipped_total, error_message)
+    except Exception as exp_err:
+        logger.error(f"Failed to export static data files: {exp_err}")
+
     conn.close()
 
     print("\n" + "="*40)
@@ -454,7 +590,7 @@ def fetch_and_save():
     print(f"New Inserted:      {inserted_total}")
     print(f"Duplicates Skipped:{skipped_total}")
     if failures:
-        print("\nFailures:")
+        print("\nFailures / Warnings:")
         for fail in failures:
             print(f" - {fail}")
     print("="*40)

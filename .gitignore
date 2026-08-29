@@ -4,8 +4,10 @@ __pycache__/
 *$py.class
 
 # Database files
-data/
+data/*.db
+data/*.sqlite
 *.db
+!data/*.json
 
 # Local environment files
 .env

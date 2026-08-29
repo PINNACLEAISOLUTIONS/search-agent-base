@@ -21,6 +21,11 @@ images_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "images")
 if os.path.exists(images_dir):
     app.mount("/images", StaticFiles(directory=images_dir), name="images")
 
+# Mount data directory if present
+data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+if os.path.exists(data_dir):
+    app.mount("/data", StaticFiles(directory=data_dir), name="data")
+
 # Get database path from environment variable or default to local path
 DATABASE_PATH = os.environ.get("DATABASE_PATH", "./data/listings.db")
 

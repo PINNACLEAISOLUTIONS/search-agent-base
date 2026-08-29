@@ -1,41 +1,52 @@
-name: Antigravity Scraper
+name: OldTimeCrank Auto Updater (Every 6 Hours)
 
 on:
+  schedule:
+    - cron: "0 */6 * * *" # Runs every 6 hours (00:00, 06:00, 12:00, 18:00 UTC)
+  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
   push:
     branches:
       - main
-  schedule:
-    - cron: "0 * * * *" # Every hour
-  workflow_dispatch: # Allow manual trigger
+    paths:
+      - "sources.json"
+
+concurrency:
+  group: auto-update
+  cancel-in-progress: false
 
 jobs:
-  scrape:
+  scrape-and-update:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.10"
+          cache: "pip"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+          pip install -r requirements.txt
           pip install requests beautifulsoup4 pandas playwright playwright-stealth
-          playwright install chromium
-          playwright install-deps
+          playwright install chromium --with-deps
 
-      - name: Run Scraper
-        run: python phonograph_scraper.py
-      - name: Commit and Push
+      - name: Run Listing Scraper & Exporter
+        run: python fetch_listings.py
+
+      - name: Commit and Push Updated Listings
         run: |
-          git config --global user.name "AntigravityBot"
-          git config --global user.email "bot@antigravity.action"
-          git add leads-v2.json leads.json leads.csv metadata.json seen_posts.json
-          git commit -m "Auto-update: $(date -u)" || exit 0
-          git pull --rebase origin main
-          git push
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/ metadata.json leads.json leads.csv items_for_sale.json
+          git commit -m "Auto-update antique listings: $(date -u '+%Y-%m-%d %H:%M:%S UTC') [skip ci]" || echo "No changes to commit"
+          git pull --rebase origin main || true
+          git push origin main

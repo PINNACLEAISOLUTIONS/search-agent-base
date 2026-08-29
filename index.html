@@ -2101,15 +2101,78 @@
                 const grid = document.getElementById('results');
 
                 try {
-                    const resListings = await fetch(`/api/listings?t=${Date.now()}`);
-                    if (!resListings.ok) throw new Error("Failed to load listings");
-                    this.data = await resListings.json();
-
-                    const resStatus = await fetch(`/api/status?t=${Date.now()}`);
-                    if (resStatus.ok) {
-                        const statusObj = await resStatus.json();
-                        this.updateStatusDisplay(statusObj);
+                    let listingsLoaded = false;
+                    
+                    // 1. Try FastAPI API endpoint first
+                    try {
+                        const resListings = await fetch(`/api/listings?t=${Date.now()}`);
+                        if (resListings.ok) {
+                            const json = await resListings.json();
+                            if (Array.isArray(json) && json.length > 0) {
+                                this.data = json;
+                                listingsLoaded = true;
+                            }
+                        }
+                    } catch (apiErr) {
+                        console.log("FastAPI backend not active, falling back to static data...");
                     }
+
+                    // 2. Fallback to static JSON file (for Netlify and static deployments)
+                    if (!listingsLoaded) {
+                        const resStatic = await fetch(`./data/listings.json?t=${Date.now()}`);
+                        if (resStatic.ok) {
+                            this.data = await resStatic.json();
+                            listingsLoaded = true;
+                        } else {
+                            // Secondary fallback to leads.json
+                            const resLeads = await fetch(`./leads.json?t=${Date.now()}`);
+                            if (resLeads.ok) {
+                                this.data = await resLeads.json();
+                                listingsLoaded = true;
+                            }
+                        }
+                    }
+
+                    if (!listingsLoaded || !this.data) {
+                        throw new Error("No listings data could be loaded.");
+                    }
+
+                    // Load status / metadata
+                    let statusLoaded = false;
+                    try {
+                        const resStatus = await fetch(`/api/status?t=${Date.now()}`);
+                        if (resStatus.ok) {
+                            const statusObj = await resStatus.json();
+                            this.updateStatusDisplay(statusObj);
+                            statusLoaded = true;
+                        }
+                    } catch (e) {}
+
+                    if (!statusLoaded) {
+                        try {
+                            const resStatusStatic = await fetch(`./data/status.json?t=${Date.now()}`);
+                            if (resStatusStatic.ok) {
+                                const statusObj = await resStatusStatic.json();
+                                this.updateStatusDisplay(statusObj);
+                                statusLoaded = true;
+                            }
+                        } catch (e) {}
+                    }
+
+                    if (!statusLoaded) {
+                        try {
+                            const resMeta = await fetch(`./metadata.json?t=${Date.now()}`);
+                            if (resMeta.ok) {
+                                const metaObj = await resMeta.json();
+                                this.updateStatusDisplay({
+                                    status: metaObj.status || 'success',
+                                    run_at: metaObj.last_updated,
+                                    error_message: null
+                                });
+                            }
+                        } catch (e) {}
+                    }
+
                 } catch (e) {
                     console.error(e);
                     grid.innerHTML = '<div class="loader">System Syncing... Please verify connection.</div>';
@@ -2125,18 +2188,26 @@
                 const alertMsg = document.getElementById('error-alert-msg');
                 const lastSyncEl = document.getElementById('last-sync');
 
-                if (statusObj.status === 'failure') {
+                if (statusObj && statusObj.status === 'failure') {
                     alertMsg.textContent = statusObj.error_message || 'Unknown network error.';
                     alertBox.style.display = 'block';
-                } else {
+                } else if (alertBox) {
                     alertBox.style.display = 'none';
                 }
 
-                if (statusObj.run_at) {
-                    const d = new Date(statusObj.run_at.replace(" ", "T") + "Z");
-                    lastSyncEl.textContent = d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + " " + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                } else {
-                    lastSyncEl.textContent = "Never";
+                if (statusObj && (statusObj.run_at || statusObj.last_updated)) {
+                    const rawTime = statusObj.run_at || statusObj.last_updated;
+                    const cleanIso = rawTime.includes('T') ? rawTime : rawTime.replace(' ', 'T') + 'Z';
+                    try {
+                        const d = new Date(cleanIso);
+                        if (!isNaN(d.getTime())) {
+                            lastSyncEl.textContent = d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + " " + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            return;
+                        }
+                    } catch (err) {}
+                    lastSyncEl.textContent = rawTime;
+                } else if (lastSyncEl) {
+                    lastSyncEl.textContent = "Every 6 Hours (Automated)";
                 }
             },
 
