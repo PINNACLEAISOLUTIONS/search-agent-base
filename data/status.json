@@ -1,8 +1,8 @@
 {
   "status": "success",
-  "checked_count": 6,
-  "inserted_count": 5,
+  "checked_count": 5,
+  "inserted_count": 4,
   "skipped_count": 1,
   "error_message": null,
-  "run_at": "2026-10-06 04:24:23"
+  "run_at": "2026-10-06 12:37:15"
 }
