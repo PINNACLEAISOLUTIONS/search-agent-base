@@ -217,7 +217,7 @@ class RssListingSource(ListingSource):
                 "location": location,
                 "source": self.name,
                 "url": url,
-                "image_url": image_url or "https://www.transparenttextures.com/patterns/aged-paper.png",
+                "image_url": image_url or "https://images.unsplash.com/photo-1545454675-3531b543be5d?auto=format&fit=crop&w=600&q=80",
                 "posted_at": posted_at,
                 "listing_id": listing_id,
                 "keyword": self.keyword
