@@ -74,7 +74,7 @@
   {
     "id": "sample_feed",
     "name": "Sample Antique Feed",
-    "enabled": true,
+    "enabled": false,
     "type": "rss",
     "url": "file:///c:/Users/futur/OLDTIMECRANK SEARCH/search-agent-base-1/sample_feed.xml",
     "region": "Florida",

@@ -376,21 +376,35 @@ def fetch_craigslist_batch(cl_sources: list) -> dict:
 
             logger.info(f"Visiting Craigslist source: {source_name} ({source_url})")
             try:
-                page.goto(source_url, wait_until="domcontentloaded", timeout=25000)
-                time.sleep(1.5)
-                
+                page.goto(source_url, wait_until="domcontentloaded", timeout=30000)
+
                 page_title = page.title()
                 if "blocked" in page_title.lower():
                     logger.warning(f"Blocked by Craigslist for '{source_name}'.")
-                    results[config["id"]] = {"error": "Blocked by Craigslist anti-bot firewall", "items": []}
+                    results[config["id"]] = {"error": "Blocked by Craigslist anti-bot firewall", "warning": None, "items": []}
                     continue
 
+                # Craigslist search results render client-side: the JS bundle
+                # boots and fetches results via XHR after DOMContentLoaded. A
+                # fixed sleep loses that race (usually 0 cards parsed), so wait
+                # for the actual result cards instead.
+                render_warning = None
+                try:
+                    page.wait_for_selector(".cl-search-result", timeout=20000)
+                    page.wait_for_timeout(2000)  # let cards hydrate (price/img)
+                except Exception as wait_err:
+                    render_warning = f"result cards did not render within 20s ({wait_err}); parsed whatever HTML was present"
+                    logger.warning(f"'{source_name}': {render_warning}")
+
                 content = page.content()
-                items = parse_craigslist_html(content, source_name, source_url, region, keyword)
-                results[config["id"]] = {"error": None, "items": items}
+                # Old subdomain URLs now redirect to www.craigslist.org/search/area/...,
+                # so resolve relative links against the final URL, not the original.
+                final_url = page.url or source_url
+                items = parse_craigslist_html(content, source_name, final_url, region, keyword)
+                results[config["id"]] = {"error": None, "warning": render_warning, "items": items}
             except Exception as e:
                 logger.error(f"Error fetching Craigslist source '{source_name}': {e}")
-                results[config["id"]] = {"error": str(e), "items": []}
+                results[config["id"]] = {"error": str(e), "warning": None, "items": []}
 
         browser.close()
 
@@ -506,14 +520,23 @@ def fetch_and_save():
         source_name = config.get("name")
         res = cl_results.get(source_id, {})
         err = res.get("error")
+        warn = res.get("warning")
         listings = res.get("items", [])
 
         if err:
             clean_error = re.sub(r'token=[^&\s]+', 'token=REDACTED', str(err))
             failures.append(f"{source_name}: {clean_error}")
+        elif warn:
+            failures.append(f"{source_name}: warning - {warn}")
 
         checked_count = len(listings)
         checked_total += checked_count
+
+        # A source that silently yields nothing is a signal, not a success.
+        # Record it so status.json stays honest instead of reporting "success"
+        # while the dashboard goes stale.
+        if not err and not warn and checked_count == 0:
+            failures.append(f"{source_name}: parsed 0 listings (results may not have rendered)")
         source_inserted = 0
         source_skipped = 0
 
