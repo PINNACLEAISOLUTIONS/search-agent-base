@@ -387,13 +387,15 @@ def fetch_craigslist_batch(cl_sources: list) -> dict:
                 # Craigslist search results render client-side: the JS bundle
                 # boots and fetches results via XHR after DOMContentLoaded. A
                 # fixed sleep loses that race (usually 0 cards parsed), so wait
-                # for the actual result cards instead.
+                # for the actual result cards instead. Use state="attached":
+                # cards can sit in the DOM before they become "visible", and
+                # a visible-only wait times out even when results did load.
                 render_warning = None
                 try:
-                    page.wait_for_selector(".cl-search-result", timeout=20000)
-                    page.wait_for_timeout(2000)  # let cards hydrate (price/img)
+                    page.wait_for_selector(".cl-search-result", timeout=45000, state="attached")
+                    page.wait_for_timeout(2500)  # let cards hydrate (price/img)
                 except Exception as wait_err:
-                    render_warning = f"result cards did not render within 20s ({wait_err}); parsed whatever HTML was present"
+                    render_warning = f"result cards did not render within 45s ({wait_err}); parsed whatever HTML was present"
                     logger.warning(f"'{source_name}': {render_warning}")
 
                 content = page.content()
