@@ -1,8 +1,8 @@
 {
-  "status": "success",
-  "checked_count": 6,
-  "inserted_count": 5,
+  "status": "partial_success",
+  "checked_count": 4,
+  "inserted_count": 3,
   "skipped_count": 1,
-  "error_message": null,
-  "run_at": "2026-10-11 21:23:05"
+  "error_message": "Craigslist Miami - Victrola: warning - result cards did not render within 20s (Page.wait_for_selector: Timeout 20000ms exceeded.\nCall log:\n  - waiting for locator(\".cl-search-result\") to be visible\n); parsed whatever HTML was present; Craigslist Miami - Phonograph: warning - result cards did not render within 20s (Page.wait_for_selector: Timeout 20000ms exceeded.\nCall log:\n  - waiting for locator(\".cl-search-result\") to be visible\n); parsed whatever HTML was present; Craigslist Tampa - Victrola: warning - result cards did not render within 20s (Page.wait_for_selector: Timeout 20000ms exceeded.\nCall log:\n  - waiting for locator(\".cl-search-result\") to be visible\n); parsed whatever HTML was present; Craigslist Tampa - Phonograph: warning - result cards did not render within 20s (Page.wait_for_selector: Timeout 20000ms exceeded.\nCall log:\n  - waiting for locator(\".cl-search-result\") to be visible\n); parsed whatever HTML was present; Craigslist Orlando - Victrola: warning - result cards did not render within 20s (Page.wait_for_selector: Timeout 20000ms exceeded.\nCall log:\n  - waiting for locator(\".cl-search-result\") to be visible\n); parsed whatever HTML was present; Craigslist Orlando - Phonograph: warning - result cards did not render within 20s (Page.wait_for_selector: Timeout 20000ms exceeded.\nCall log:\n  - waiting for locator(\".cl-search-result\") to be visible\n); parsed whatever HTML was present; Craigslist Daytona - Victrola: warning - result cards did not render within 20s (Page.wait_for_selector: Timeout 20000ms exceeded.\nCall log:\n  - waiting for locator(\".cl-search-result\") to be visible\n); parsed whatever HTML was present; Craigslist Daytona - Phonograph: warning - result cards did not render within 20s (Page.wait_for_selector: Timeout 20000ms exceeded.\nCall log:\n  - waiting for locator(\".cl-search-result\") to be visible\n); parsed whatever HTML was present",
+  "run_at": "2026-10-11 22:24:57"
 }
