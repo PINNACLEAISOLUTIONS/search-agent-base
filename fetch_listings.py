@@ -23,6 +23,36 @@ logger = logging.getLogger("fetch_listings")
 # Get database path from environment variable or default to local path
 DATABASE_PATH = os.environ.get("DATABASE_PATH", "./data/listings.db")
 
+UNSPLASH_FALLBACK = "https://images.unsplash.com/photo-1545454675-3531b543be5d?auto=format&fit=crop&w=600&q=80"
+
+def fetch_detail_image(listing_url):
+    if not listing_url:
+        return ""
+    try:
+        req = urllib.request.Request(listing_url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            html = resp.read().decode("utf-8", errors="ignore")
+        imgs = re.findall(r'https://images.craigslist.org/[^"\s]+\.jpg', html)
+        seen = set()
+        uniq = []
+        for u in imgs:
+            if u not in seen:
+                seen.add(u)
+                uniq.append(u)
+        for u in uniq:
+            if "_600x450" in u:
+                return u
+        return uniq[0] if uniq else ""
+    except Exception as e:
+        logger.debug("Detail image fetch failed: %s", e)
+        return ""
+
+def needs_real_image(img_url):
+    if not img_url:
+        return True
+    return ("unsplash" in img_url) or ("transparent" in img_url) or ("placeholder" in img_url)
+
+
 def init_db():
     """Initializes the SQLite database tables if they do not exist."""
     db_dir = os.path.dirname(DATABASE_PATH)
@@ -543,6 +573,10 @@ def fetch_and_save():
         source_skipped = 0
 
         for listing in listings:
+            if needs_real_image(listing.get("image_url", "")):
+                real_img = fetch_detail_image(listing.get("url", ""))
+                if real_img:
+                    listing["image_url"] = real_img
             try:
                 cursor.execute("""
                     INSERT OR IGNORE INTO listings (title, price, location, source, url, image_url, posted_at, listing_id, keyword)
@@ -631,6 +665,16 @@ def fetch_and_save():
 
     # Export static data files for static website hosting (Netlify)
     try:
+        try:
+            cursor.execute("SELECT id, url FROM listings WHERE image_url LIKE '%unsplash%' OR image_url LIKE '%transparent%' OR image_url IS NULL OR image_url = ''")
+            for row_id, url in cursor.fetchall():
+                real_img = fetch_detail_image(url)
+                if real_img:
+                    cursor.execute("UPDATE listings SET image_url = ? WHERE id = ?", (real_img, row_id))
+            conn.commit()
+        except Exception as be:
+            logger.warning("Backfill failed: %s", be)
+
         export_static_data(conn, status, checked_total, inserted_total, skipped_total, error_message)
     except Exception as exp_err:
         logger.error(f"Failed to export static data files: {exp_err}")
