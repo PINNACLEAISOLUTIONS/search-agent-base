@@ -28,6 +28,7 @@ UNSPLASH_FALLBACK = "https://images.unsplash.com/photo-1545454675-3531b543be5d?a
 def fetch_detail_image(listing_url):
     if not listing_url:
         return ""
+    logger.info("Fetching detail page for image: %s", listing_url[:80])
     try:
         req = urllib.request.Request(listing_url, headers={"User-Agent": "Mozilla/5.0"})
         with urllib.request.urlopen(req, timeout=15) as resp:
@@ -44,7 +45,7 @@ def fetch_detail_image(listing_url):
                 return u
         return uniq[0] if uniq else ""
     except Exception as e:
-        logger.debug("Detail image fetch failed: %s", e)
+        logger.warning("Detail image fetch failed for %s: %s", listing_url[:80], str(e)[:200])
         return ""
 
 def needs_real_image(img_url):
