@@ -1,8 +1,8 @@
 {
   "status": "partial_success",
-  "checked_count": 6,
-  "inserted_count": 4,
+  "checked_count": 8,
+  "inserted_count": 6,
   "skipped_count": 2,
   "error_message": "Craigslist Miami - Victrola: warning - result cards did not render within 45s (Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\".cl-search-result\")\n); parsed whatever HTML was present; Craigslist Miami - Phonograph: warning - result cards did not render within 45s (Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\".cl-search-result\")\n); parsed whatever HTML was present; Craigslist Tampa - Victrola: warning - result cards did not render within 45s (Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\".cl-search-result\")\n); parsed whatever HTML was present; Craigslist Tampa - Phonograph: warning - result cards did not render within 45s (Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\".cl-search-result\")\n); parsed whatever HTML was present; Craigslist Orlando - Victrola: warning - result cards did not render within 45s (Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\".cl-search-result\")\n); parsed whatever HTML was present; Craigslist Orlando - Phonograph: warning - result cards did not render within 45s (Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\".cl-search-result\")\n); parsed whatever HTML was present; Craigslist Daytona - Victrola: warning - result cards did not render within 45s (Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\".cl-search-result\")\n); parsed whatever HTML was present; Craigslist Daytona - Phonograph: warning - result cards did not render within 45s (Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\".cl-search-result\")\n); parsed whatever HTML was present",
-  "run_at": "2026-10-12 23:38:23"
+  "run_at": "2026-10-13 00:09:01"
 }
